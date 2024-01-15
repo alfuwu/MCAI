@@ -7,9 +7,7 @@ import me.shedaniel.autoconfig.serializer.Toml4jConfigSerializer;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
-import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.network.PacketByteBuf;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -18,16 +16,21 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 
 import static com.alfred.ai.MCAIMod.characterAI;
+import static com.alfred.ai.MCAIMod.sendGlobalMessage;
 
 public class MCAIMod implements ModInitializer {
 	// This logger is used to write text to the console and the log file.
 	// It is considered best practice to use your mod id as the logger's name.
 	// That way, it's clear which mod wrote info, warnings, and errors.
-    public static final Logger LOGGER = LoggerFactory.getLogger("mcai");
-	public static final Identifier CHAT = new Identifier("mcai", "chat");
+	public static final String MODID = "mcai";
+
+    public static final Logger LOGGER = LoggerFactory.getLogger(MODID);
+	public static final Identifier CHAT = new Identifier(MODID, "chat");
+	public static final Identifier QUERY_AI_GLOBAL = new Identifier(MODID, "ask_ai_global");
 	public static MinecraftServer modServer = null;
 	public static JavaCAI characterAI;
 
@@ -48,11 +51,40 @@ public class MCAIMod implements ModInitializer {
 		ServerPlayNetworking.registerGlobalReceiver(CHAT, (server, player, handler, buf, responseSender) -> {
 			// Handle received message
 		});
+		ServerPlayNetworking.registerGlobalReceiver(QUERY_AI_GLOBAL, (server, player, handler, buf, responseSender) -> {
+			String text = buf.readString();
+			MCAIConfig config = MCAIConfig.getInstance();
+
+			for (MCAIConfig.CharacterTuple tuple : config.AIs) {
+				if (tuple.disabled) // ignore disabled AIs
+					continue;
+				List<String> list = new java.util.ArrayList<>(Arrays.stream(tuple.aliases).toList());
+				list.add(0, tuple.name);
+				String[] arr = list.toArray(new String[] {});
+				/*/
+				System.out.println(Arrays.toString(arr));
+				System.arraycopy(tuple.aliases, 0, arr, 0, tuple.aliases.length);
+				/*/
+				for (String name : arr) {
+					if (text.toLowerCase().contains(String.format("@%s", name.toLowerCase()))) {
+						if (text.toLowerCase().startsWith(String.format("@%s", name.toLowerCase())))
+							text = text.substring(name.length() + 1); // chop off starting ping
+						Runnable task = new AIResponse(
+								tuple, text,
+								player != null ? player.getName().getLiteralString() : "Anonymous",
+								config.General.format,
+								config.General.replyFormat,
+								server);
+						Thread thread = new Thread(null, task, "HTTP thread");
+						thread.start();
+						break;
+					}
+				}
+			}
+		});
 
 		ServerLifecycleEvents.SERVER_STARTED.register((server -> modServer = modServer == null ? server : modServer)); // set modServer to the server on startup
-		ServerTickEvents.START_SERVER_TICK.register((server -> modServer = modServer == null ? server : modServer));
 		CommandRegistrationCallback.EVENT.register(((dispatcher, registryAccess, environment) -> MCAICommands.register(dispatcher)));
-
 	}
 
 	public static void sendPrivateMessage(String message, ServerPlayerEntity player) {
@@ -62,64 +94,20 @@ public class MCAIMod implements ModInitializer {
 		ServerPlayNetworking.send(player, CHAT, buf);
 	}
 
-	public static void sendGlobalMessage(String text) {
-		modServer.getPlayerManager().getPlayerList().forEach(player -> sendPrivateMessage(text, player));
-	}
 
 	public static void sendGlobalMessage(String text, MinecraftServer server) {
-		try {
-			server.getPlayerManager().getPlayerList().forEach(player -> sendPrivateMessage(text, player));
-		} catch (Exception e) {
-			sendGlobalMessage(text);
-		}
+		server.getPlayerManager().getPlayerList().forEach(player -> sendPrivateMessage(text, player));
 	}
 
 	public static void sendGlobalMessage(String text, List<ServerPlayerEntity> players) {
-		try {
-			players.forEach(player -> sendPrivateMessage(text, player));
-		} catch (Exception e) {
-			sendGlobalMessage(text);
-		}
+		players.forEach(player -> sendPrivateMessage(text, player));
 	}
 
 	/*/ public static ServerPlayerEntity convertClientPlayerEntityToServerPlayerEntity(PlayerEntity clientPlayerEntity) {
-		if (clientPlayerEntity.getClass() != ServerPlayerEntity.class && modServer != null) {
+		if (clientPlayerEntity.getClass() != ServerPlayerEntity.class && modServer != null)
 			clientPlayerEntity = modServer.getPlayerManager().getPlayer(clientPlayerEntity.getUuid());
-		}
 		return (ServerPlayerEntity) clientPlayerEntity;
 	} /*/
-
-	public static void onChatMessage(String text, PlayerEntity player) throws IOException {
-		/*/ if (player.getClass() != ServerPlayerEntity.class && modServer != null) {
-			player = modServer.getPlayerManager().getPlayer(player.getUuid());
-		} /*/
-		//System.out.println(String.format("Received message \"%s\" from %s", text, player.getName().getLiteralString()));
-		MCAIConfig config = MCAIConfig.getInstance();
-		List<MCAIConfig.CharacterTuple> characters = config.AIs;
-		for (MCAIConfig.CharacterTuple tuple : characters) {
-			if (tuple.disabled)
-				continue;
-			String[] arr = new String[tuple.aliases.length + 1];
-			System.arraycopy(tuple.aliases, 0, arr, 0, tuple.aliases.length);
-			arr[arr.length - 1] = tuple.name;
-			for (String name : arr) {
-				if (text.toLowerCase().contains(String.format("@%s", name.toLowerCase()))) {
-					if (text.toLowerCase().startsWith(String.format("@%s", name.toLowerCase())))
-						text = text.substring(String.format("@%s", name).length()); // chop off starting ping
-					Runnable task = new AIResponse(
-							tuple,
-							text,
-							player.getName().getLiteralString(),
-							config.General.format,
-							config.General.replyFormat);
-					Thread thread = new Thread(task);
-					thread.start();
-					break;
-				}
-			}
-		}
-		//sendGlobalMessage("<Echo> " + text);
-	}
 }
 
 class AIResponse implements Runnable {
@@ -128,13 +116,15 @@ class AIResponse implements Runnable {
 	public final String playerName;
 	public final String format;
 	public final String replyFormat;
+	public final MinecraftServer server;
 
-	public AIResponse(MCAIConfig.CharacterTuple tuple, String text, String playerName, String format, String replyFormat) {
+	public AIResponse(MCAIConfig.CharacterTuple tuple, String text, String playerName, String format, String replyFormat, MinecraftServer server) {
 		this.tuple = tuple;
 		this.text = text;
 		this.playerName = playerName == null ? "Anonymous" : playerName;
 		this.format = format;
 		this.replyFormat = replyFormat;
+		this.server = server;
 	}
 
 	@Override
@@ -154,9 +144,9 @@ class AIResponse implements Runnable {
 							.replace("{user}", playerName)
 							.replace("{message}", text),
 					tgt);
-			MCAIMod.sendGlobalMessage(replyFormat
+			sendGlobalMessage(replyFormat
 					.replace("{char}", reply.get("src_char").get("participant").get("name").asText())
-					.replace("{message}", reply.get("replies").get(0).get("text").asText()));
+					.replace("{message}", reply.get("replies").get(0).get("text").asText()), server);
 		} catch (IOException ignored) { }
 	}
 }

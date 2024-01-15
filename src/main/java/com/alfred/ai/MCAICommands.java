@@ -9,6 +9,7 @@ import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
+import org.apache.logging.log4j.core.jmx.Server;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -63,7 +64,14 @@ public class MCAICommands {
                 .then(CommandManager.literal("disable") // disables the AI (prevents it from responding to pings)
                         .then(CommandManager.argument("name", StringArgumentType.word())
                                 .executes(context -> stopChat(context.getSource(),
-                                        StringArgumentType.getString(context, "name"))))));
+                                        StringArgumentType.getString(context, "name")))))
+                .then(CommandManager.literal("authorize") // enables the AI (allows it to respond to pings)
+                        .then(CommandManager.argument("token", StringArgumentType.word())
+                                .requires(source -> source.hasPermissionLevel(MCAIConfig.getInstance().General.adminPermissionLevel) || Objects.requireNonNull(source.getPlayer()).isMainPlayer())
+                                .executes(context -> authorize(context.getSource(),
+                                        StringArgumentType.getString(context, "token")))))
+                .then(CommandManager.literal("list") // lists available AIs
+                        .executes(context -> list(context.getSource()))));
     }
 
     private static int registerCharacter(ServerCommandSource source, String characterID, String aliases) {
@@ -77,7 +85,7 @@ public class MCAICommands {
                 MCAIConfig.save();
                 MCAIConfig.load();
                 //source.sendMessage(Text.translatable("mcai.messages.character_register_success", name, name));
-                source.sendFeedback(() -> Text.translatable("mcai.messages.character_register_success"), true);
+                source.sendFeedback(() -> Text.translatable("mcai.messages.character_register_success", name, name), true);
                 return 1; // Command successful
             } catch (IOException e) {
                 e.printStackTrace();
@@ -93,7 +101,7 @@ public class MCAICommands {
                 MCAIConfig.getInstance().AIs.remove(tuple);
                 MCAIConfig.save();
                 //source.sendMessage(Text.translatable("mcai.messages.character_unregister_success"));
-                source.sendFeedback(() -> Text.translatable("mcai.messages.character_unregister_success"), true);
+                source.sendFeedback(() -> Text.translatable("mcai.messages.character_unregister_success", tuple.name), true);
                 return 1;
             }
         }
@@ -108,13 +116,12 @@ public class MCAICommands {
                 foundAnAI = true;
                 if (!tuple.disabled) {
                     Runnable task = new AIPlayerListResponse(
-                            tuple,
-                            text,
+                            tuple, text,
                             source.getName(),
                             MCAIConfig.getInstance().General.format,
                             MCAIConfig.getInstance().General.replyFormat,
                             source.getServer().getPlayerManager().getPlayerList());
-                    Thread thread = new Thread(task);
+                    Thread thread = new Thread(null, task, "HTTP thread");
                     thread.start();
                     return 1; // Command successful
                 }
@@ -163,19 +170,19 @@ public class MCAICommands {
                 } else {
                     try {
                         JsonNode chat = characterAI.chat.getHistory(tuple.historyID);
-                        System.out.println(chat);
                         for (int i = 0; i < 5; i++) {
                             int messageIndex = chat.get("messages").size() + i - 5;
                             if (messageIndex >= 0) {
                                 String text = chat.get("messages").get(messageIndex).get("text").asText();
+                                Tuple<String> reversedFormat = reverseFormat(MCAIConfig.getInstance().General.format, text);
                                 text = MCAIConfig.getInstance().General.replyFormat
                                         .replace("{char}", chat.get("messages").get(messageIndex).get("src__is_human").asBoolean(false) ?
-                                                reverseFormat(MCAIConfig.getInstance().General.format, text).get(0) :
+                                                reversedFormat.get(0) :
                                                 chat.get("messages").get(messageIndex).get("src_char").get("participant").get("name").asText())
-                                        .replace("{message}",
-                                                reverseFormat(MCAIConfig.getInstance().General.format, text).get(1).equals("") ?
+                                        .replace("{message}", reversedFormat.get(1).equals("") ?
                                                         text :
-                                                        reverseFormat(MCAIConfig.getInstance().General.format, text).get(1));
+                                                        reversedFormat.get(1).charAt(0) == ' ' ?
+                                                                reversedFormat.get(1).substring(1) : reversedFormat.get(1));
                                 if (broadcast) {
                                     sendGlobalMessage(text, source.getServer());
                                 } else {
@@ -258,6 +265,28 @@ public class MCAICommands {
         }
         source.sendError(Text.translatable(!foundAnAI ? "mcai.errors.ai_not_found" : "mcai.errors.no_suitable_ai_found", name));
         return 0;
+    }
+
+    private static int authorize(ServerCommandSource source, String token) {
+        MCAIConfig.getInstance().General.authorization = token;
+        MCAIConfig.save();
+        MCAIConfig.load();
+        //source.sendMessage(Text.translatable("mcai.messages.authorized", token));
+        source.sendFeedback(() -> Text.translatable("mcai.messages.authorized", token), true);
+        return 1;
+    }
+
+    private static int list(ServerCommandSource source) {
+        final String[] text = {""};
+        MCAIConfig.getInstance().AIs.forEach(tuple ->
+                text[0] += String.format("\n - %s %s",
+                        tuple.name,
+                        Text.translatable(String.format("mcai.messages.%s", tuple.disabled ?
+                                "disabled" : "enabled")).getString()) +
+                        (tuple.aliases.length > 0 ? ' ' + Arrays.toString(tuple.aliases) : ""));
+        //source.sendMessage(Text.translatable("mcai.messages.ai_list", text[0]));
+        source.sendFeedback(() -> Text.translatable("mcai.messages.ai_list", text[0]), false);
+        return 1;
     }
 }
 

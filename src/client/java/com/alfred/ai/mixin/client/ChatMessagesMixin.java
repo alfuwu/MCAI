@@ -1,6 +1,7 @@
 package com.alfred.ai.mixin.client;
 
 import com.alfred.ai.MCAIMod;
+import com.alfred.ai.MCAIModClient;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.ChatScreen;
 import org.spongepowered.asm.mixin.Mixin;
@@ -14,6 +15,7 @@ import java.io.IOException;
 public class ChatMessagesMixin {
     @Inject(at = @At("HEAD"), method = "sendMessage")
     private void sendMessage(String chatText, boolean addToHistory, CallbackInfoReturnable<Boolean> cir) throws IOException {
-        MCAIMod.onChatMessage(chatText, MinecraftClient.getInstance().player);
+        //MCAIMod.onChatMessage(chatText, MinecraftClient.getInstance().player);
+        MCAIModClient.onChatMessage(chatText);
     }
 }

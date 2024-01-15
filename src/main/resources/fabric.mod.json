@@ -19,6 +19,9 @@
 		],
 		"client": [
 			"com.alfred.ai.MCAIModClient"
+		],
+		"modmenu": [
+			"com.alfred.ai.ModMenuIntegration"
 		]
 	},
 	"mixins": [

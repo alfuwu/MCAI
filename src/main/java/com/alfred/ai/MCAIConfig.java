@@ -4,6 +4,9 @@ import com.google.common.collect.Lists;
 import me.shedaniel.autoconfig.AutoConfig;
 import me.shedaniel.autoconfig.ConfigData;
 import me.shedaniel.autoconfig.annotation.Config;
+import me.shedaniel.autoconfig.annotation.ConfigEntry;
+import me.shedaniel.autoconfig.serializer.Toml4jConfigSerializer;
+import me.shedaniel.cloth.clothconfig.shadowed.blue.endless.jankson.Comment;
 
 import java.util.List;
 
@@ -13,7 +16,7 @@ public class MCAIConfig implements ConfigData {
             "{user}:{message}",
             "<{char}> {message}",
             "",
-            2);
+            3);
     public List<CharacterTuple> AIs = Lists.newArrayList();
     public static MCAIConfig getInstance() {
         return AutoConfig.getConfigHolder(MCAIConfig.class).getConfig();
@@ -28,10 +31,11 @@ public class MCAIConfig implements ConfigData {
     }
 
     public static class General {
-        public String format = "{user}: {message}";
-        public String replyFormat = "<{char}> {message}";
-        public String authorization = "";
-        public int adminPermissionLevel = 2;
+        public String format;
+        public String replyFormat;
+        @ConfigEntry.Category("serverOnly") // im not even sure this does anythin but idfc so im leavin it here
+        public String authorization;
+        public int adminPermissionLevel;
 
         public General(String format, String replyFormat, String authorization, int adminPermissionLevel) {
             this.format = format;
