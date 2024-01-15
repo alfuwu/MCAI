@@ -1,0 +1,20 @@
+{
+  "mcai.config.general": "Geral",
+  "mcai.config.general.format": "Formato de Mensagem",
+  "mcai.config.general.format.description": "O formato de mensagem determina como suas mensagens serão formatadas para a IA. {name} é substituído pelo seu nome de usuário, e {message} é substituído pelo texto que você enviou.",
+  "mcai.config.general.replyFormat": "Formato de Resposta",
+  "mcai.config.general.replyFormat.description": "O formato de resposta determina como as mensagens da IA serão formatadas ao serem enviadas para o bate-papo do Minecraft. Esta opção está principalmente aqui para aqueles que têm um mod do Minecraft que altera como o bate-papo é formatado, para que as mensagens da IA se encaixem.",
+  "mcai.config.general.authorization": "Autorização",
+  "mcai.config.general.authorization.description": "Este é o token de autorização da sua conta https://c.ai. Obtenha-o indo para https://c.ai -> Inspecionar Elemento -> Aplicativo -> Armazenamento Local -> char_token -> valor.",
+  "mcai.config.general.register_and_unregister_min_permission_level": "Nível de Comando Restrito",
+  "mcai.config.general.register_and_unregister_min_permission_level.description": "O nível de comando restrito é o mínimo necessário para executar comandos restritos. Atualmente, apenas /ai register e /ai unregister são comandos restritos.",
+  "mcai.config.ais": "IAs",
+  "mcai.config.ais.name": "Nome",
+  "mcai.config.ais.name.description": "Este é o nome que o Formato de Resposta usará ao formatar as respostas da IA.",
+  "mcai.config.ais.id": "ID",
+  "mcai.config.ais.id.description": "Este é o ID do personagem. Você pode obter o ID de um personagem em https://c.ai abrindo um chat com um personagem e, em seguida, selecionando o texto após 'char='.",
+  "mcai.config.ais.history_id": "ID de Histórico",
+  "mcai.config.ais.history_id.description": "O ID de histórico é o ID do seu chat atual. Executar /ai new chat gerará um novo ID de histórico e, assim, reiniciará a conversa.",
+  "mcai.config.ais.aliases": "Aliases",
+  "mcai.config.ais.aliases.description": "Aliases são nomes alternativos com os quais você pode mencionar a IA no chat. Por exemplo, quando aliases contém 'hello', você pode digitar '@hello' no chat para conversar com a IA, em vez de usar seu nome."
+}

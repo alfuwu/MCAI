@@ -1,0 +1,20 @@
+{
+  "mcai.config.general": "Ogólne",
+  "mcai.config.general.format": "Format Wiadomości",
+  "mcai.config.general.format.description": "Format wiadomości określa, w jaki sposób Twoje wiadomości będą formatowane dla sztucznej inteligencji. {name} zostanie zastąpione Twoją nazwą użytkownika, a {message} tekstem, który wysłałeś.",
+  "mcai.config.general.replyFormat": "Format Odpowiedzi",
+  "mcai.config.general.replyFormat.description": "Format odpowiedzi określa, w jaki sposób wiadomości sztucznej inteligencji będą formatowane, gdy zostaną wysłane do chatu w Minecraft. Ta opcja jest głównie dla tych, którzy mają mod Minecraft zmieniający sposób formatowania chatu, aby wiadomości SI pasowały.",
+  "mcai.config.general.authorization": "Autoryzacja",
+  "mcai.config.general.authorization.description": "To jest token autoryzacyjny Twojego konta https://c.ai. Otrzymaj go, przechodząc do https://c.ai -> Inspekcja elementu -> Aplikacja -> Magazyn lokalny -> char_token -> wartość.",
+  "mcai.config.general.register_and_unregister_min_permission_level": "Ograniczony Poziom Komendy",
+  "mcai.config.general.register_and_unregister_min_permission_level.description": "Ograniczony poziom komendy to minimalny wymagany poziom do uruchamiania ograniczonych poleceń. Obecnie tylko /ai register i /ai unregister to ograniczone komendy.",
+  "mcai.config.ais": "SI",
+  "mcai.config.ais.name": "Nazwa",
+  "mcai.config.ais.name.description": "To jest nazwa, którą Format Odpowiedzi będzie używał podczas formatowania odpowiedzi SI.",
+  "mcai.config.ais.id": "ID",
+  "mcai.config.ais.id.description": "To jest identyfikator postaci. Możesz uzyskać identyfikator postaci z https://c.ai, otwierając czat z postacią, a następnie wybierając tekst po 'char='.",
+  "mcai.config.ais.history_id": "ID Historii",
+  "mcai.config.ais.history_id.description": "ID historii to identyfikator bieżącej rozmowy. Uruchomienie /ai new chat wygeneruje nowe ID historii i zresetuje rozmowę.",
+  "mcai.config.ais.aliases": "Aliasy",
+  "mcai.config.ais.aliases.description": "Aliasy to alternatywne nazwy, którymi możesz wzmiankować SI w czacie. Na przykład, gdy aliasy zawierają 'hello', możesz napisać '@hello' w czacie, aby rozmawiać z SI, zamiast używać jej nazwy."
+}

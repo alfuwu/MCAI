@@ -1,0 +1,20 @@
+{
+  "mcai.config.general": "ທົ່ວປະເທດ",
+  "mcai.config.general.format": "ຮູບແບບຂໍ້ຄວາມ",
+  "mcai.config.general.format.description": "ຮູບແບບຂໍ້ຄວາມຕັ້ງຄ່າເຈົ້າຈະມີຄວາມຮັກສາສ່ວນຕົນ. {name} ຈະຖືກປ່ຽນໂດຍຊື່ຜູ້ໃຊ້ຂອງທ່ານ, ແລະ {message} ຈະຖືກປ່ຽນໂດຍຂໍ້ຄວາມທ່ານສົ່ງ.",
+  "mcai.config.general.replyFormat": "ຮູບແບບຕອບການຕອບ",
+  "mcai.config.general.replyFormat.description": "ຮູບແບບຕອບການຕອບຕົວເລື່ອນວ່າງກໍາຫນົດຄ່າຂໍ້ຄວາມຈາກຄ່າ chat Minecraft. ຕົວເລື່ອນນີ້ມັນຢູ່ທີ່ນີ້ໄດ້ເພື່ອຜ່ານໃນການທ່ານກົດມາກໍາສະຫຼອດ.",
+  "mcai.config.general.authorization": "ການອະນຸຍາດ",
+  "mcai.config.general.authorization.description": "ນີ້ແມ່ນ token ການອະນຸຍາດຂອງທ່ານຂອງທ່ານ https://c.ai. ຮູບແບບເພື່ອບໍລິການ https://c.ai -> Inspect Element -> Application -> Local Storage -> char_token -> value.",
+  "mcai.config.general.register_and_unregister_min_permission_level": "ລະດັບການຈັດຫວັງລົບ",
+  "mcai.config.general.register_and_unregister_min_permission_level.description": "ລະດັບການຈັດຫວັງລົບແມ່ນລະດັບຕໍ່ນ້ຳທີ່ຕໍ່າການເຮັດຕາມແຕ່ລະຄ່າຄວາມຄິດ. ປະຕິບັດ, ຖືກການ /ai register ແລະ /ai unregister ແມ່ນຄ່າຄວາມຄິດ.",
+  "mcai.config.ais": "AI",
+  "mcai.config.ais.name": "ຊື່",
+  "mcai.config.ais.name.description": "ນີ້ແມ່ນຊື່ທີ່ Reply Format ໃຊ້ເມື່ອແຟັກຄຳ AI responses.",
+  "mcai.config.ais.id": "ID",
+  "mcai.config.ais.id.description": "ນີ້ແມ່ນ ID ຂອງອື່ນ. ທ່ານສາມາດເພີ່ມ ID ຂອງອື່ນຈາກ https://c.ai ດຽວລອງເວັບຊົນລັດແລະເລື່ອມີກ່ອງ 'char='. ",
+  "mcai.config.ais.history_id": "ID ປະຫວັດ",
+  "mcai.config.ais.history_id.description": "ID ປະຫວັດແມ່ນ ID ຂອງຄ່າ chat ປະຫວັດຂອງທ່ານ. ການເຮັດ /ai new chat ແລະຂອງແມ່ນ / ເຮັດ ເພື່ອສ້າງ ID ປະຫວັດໃຫ້ໃໝ່, ແລະນັກທີ່ຈະລົບສະຫຼາດ.",
+  "mcai.config.ais.aliases": "ຄຳສວນ",
+  "mcai.config.ais.aliases.description": "ຄຳສວນແມ່ນຊື່ອື່ນທີ່ທ່ານສາມາດສ້າງແຕ່ຊື່ອື່ນໃນ chat. ຕອບ, ຖ້າຄຳສວນເທົ່າ 'hello', ທ່ານສາມາດພິມ '@hello' ໃນ chat ເພື່ອສ້າງແຕ່ຊື່ອື່ນ."
+}

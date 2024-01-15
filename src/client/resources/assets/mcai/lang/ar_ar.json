@@ -1,0 +1,20 @@
+{
+  "mcai.config.general": "عام",
+  "mcai.config.general.format": "تنسيق الرسالة",
+  "mcai.config.general.format.description": "تحدد تنسيق الرسالة كيف ستتم تنسيق رسائلك للذكاء الاصطناعي. {name} يتم استبدالها باسم المستخدم الخاص بك و {message} يتم استبدالها بالنص الذي قمت بإرساله.",
+  "mcai.config.general.replyFormat": "تنسيق الرد",
+  "mcai.config.general.replyFormat.description": "تحدد تنسيق الرد كيف ستتم تنسيق رسائل الذكاء الاصطناعي عند إرسالها إلى دردشة Minecraft. تم وضع هذا الخيار هنا أساسًا لأولئك الذين لديهم تعديل على دردشة Minecraft لكي تتناسب رسائل الذكاء الاصطناعي معها.",
+  "mcai.config.general.authorization": "التفويض",
+  "mcai.config.general.authorization.description": "هذا هو رمز التفويض لحسابك على https://c.ai. احصل عليه من خلال الانتقال إلى https://c.ai -> تفتيش العنصر -> التطبيق -> التخزين المحلي -> char_token -> القيمة.",
+  "mcai.config.general.register_and_unregister_min_permission_level": "مستوى الأمر المقيد",
+  "mcai.config.general.register_and_unregister_min_permission_level.description": "مستوى الأمر المقيد هو الحد الأدنى المطلوب لتشغيل الأوامر المقيدة. حاليًا ، تكون الأوامر المقيدة هي فقط /ai register و /ai unregister.",
+  "mcai.config.ais": "ذكاء اصطناعي",
+  "mcai.config.ais.name": "الاسم",
+  "mcai.config.ais.name.description": "هذا هو الاسم الذي سيستخدمه تنسيق الرد عند تنسيق ردود الذكاء الاصطناعي.",
+  "mcai.config.ais.id": "الهوية",
+  "mcai.config.ais.id.description": "هذا هو هوية الشخصية. يمكنك الحصول على هوية الشخصية من خلال https://c.ai عن طريق فتح محادثة مع شخصية ثم تحديد النص بعد 'char='.",
+  "mcai.config.ais.history_id": "هوية التاريخ",
+  "mcai.config.ais.history_id.description": "هوية التاريخ هي هوية محادثتك الحالية. تشغيل /ai new chat سيؤدي إلى إنشاء هوية تاريخ جديدة ، وبالتالي إعادة تعيين الدردشة.",
+  "mcai.config.ais.aliases": "الأسماء المستعارة",
+  "mcai.config.ais.aliases.description": "الأسماء المستعارة هي أسماء بديلة يمكنك من خلالها الرد على الذكاء الاصطناعي في الدردشة. على سبيل المثال ، عندما تحتوي الأسماء المستعارة على 'hello' ، يمكنك كتابة '@hello' في الدردشة للتحدث مع الذكاء الاصطناعي بدلاً من اسمه."
+}

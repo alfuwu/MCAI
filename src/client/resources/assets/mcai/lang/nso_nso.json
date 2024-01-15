@@ -1,0 +1,20 @@
+{
+  "mcai.config.general": "General",
+  "mcai.config.general.format": "Leeto la Dikgopelo",
+  "mcai.config.general.format.description": "Leeto la dikgopelo le hlakilwe ka wena ka ho buisana le AI. {name} e tswa ka nna ho o buisana le username ya hao, le {message} e tswa ka ho text o ile wa utlwa.",
+  "mcai.config.general.replyFormat": "Leeto la Ho Kgetha",
+  "mcai.config.general.replyFormat.description": "Leeto la ho kgetha le hlakilwe ka ho AI messages ho tlosoe ha ho chat ea Minecraft. Sena sebelisoa feela bakeng sa ba bang ka moepong o ne o sa rate ho kgetha.",
+  "mcai.config.general.authorization": "Oseleseletsa",
+  "mcai.config.general.authorization.description": "Ena ke token ea oseleseletsa ya aka ea https://c.ai. Iketleha ho https://c.ai -> Inspect Element -> Application -> Local Storage -> char_token -> value ho etsahala.",
+  "mcai.config.general.register_and_unregister_min_permission_level": "Moepong o mo Khedutshwana",
+  "mcai.config.general.register_and_unregister_min_permission_level.description": "Moepong o mo khedutshwana o mo thata o leng moea ho etsa tiriho ea meea e tloaelehileng. Hoja, feela /ai register le /ai unregister ke meea e tloaelehileng.",
+  "mcai.config.ais": "AI",
+  "mcai.config.ais.name": "Lebitso",
+  "mcai.config.ais.name.description": "Ena ke lebitso le Reply Format o tla o thusa ho moea e buisang AI responses.",
+  "mcai.config.ais.id": "ID",
+  "mcai.config.ais.id.description": "Ena ke ID ya setšhaba. O ka fumana ID ya setšhaba ka ho bona https://c.ai ka ho bona chat le setšhaba le se nang le sekepe sa 'char='. ",
+  "mcai.config.ais.history_id": "ID ya Lentswe",
+  "mcai.config.ais.history_id.description": "ID ya lentswe ke ID ya chat ya hao ya lefatshe. Ho ea /ai new chat o tla sebelisoa ka ID e tlang ho eona, leho ka thusa ho hlakola setšhaba.",
+  "mcai.config.ais.aliases": "Ditemana",
+  "mcai.config.ais.aliases.description": "Ditemana di ke ditebela tsa ho bua le AI ka chat. Mmele, fa ditemana di fela tsa bua ka 'hello', o ka hloka ho botsa '@hello' ka chat ho bua le AI, kamoo lebitso la hao."
+}

@@ -1,0 +1,20 @@
+{
+  "mcai.config.general": "Opće",
+  "mcai.config.general.format": "Format Poruke",
+  "mcai.config.general.format.description": "Format poruke određuje kako će poruke biti oblikovane za AI. {name} se zamjenjuje vašim korisničkim imenom, a {message} tekstom koji ste poslali.",
+  "mcai.config.general.replyFormat": "Format Odgovora",
+  "mcai.config.general.replyFormat.description": "Format odgovora određuje kako će AI poruke biti oblikovane kada se šalju u Minecraft chat. Ova opcija je uglavnom ovdje za one koji imaju Minecraft mod koji mijenja kako je chat oblikovan, tako da AI poruke mogu odgovarati.",
+  "mcai.config.general.authorization": "Autorizacija",
+  "mcai.config.general.authorization.description": "Ovo je autorizacijski token vašeg https://c.ai računa. Dobijte ga odlaskom na https://c.ai -> Inspect Element -> Application -> Local Storage -> char_token -> value.",
+  "mcai.config.general.register_and_unregister_min_permission_level": "Nivo Restrikcije Komande",
+  "mcai.config.general.register_and_unregister_min_permission_level.description": "Nivo restrikcije komande je minimalna potrebna razina za izvršavanje restrikcija komandi. Trenutno, samo su /ai register i /ai unregister restrikcije komande.",
+  "mcai.config.ais": "IA",
+  "mcai.config.ais.name": "Ime",
+  "mcai.config.ais.name.description": "Ovo je ime koje će Format Odgovora koristiti pri oblikovanju odgovora IA.",
+  "mcai.config.ais.id": "ID",
+  "mcai.config.ais.id.description": "Ovo je ID lika. ID lika možete dobiti s https://c.ai otvaranjem razgovora s likom i odabirom teksta nakon 'char='.",
+  "mcai.config.ais.history_id": "ID Povijesti",
+  "mcai.config.ais.history_id.description": "ID povijesti je ID vašeg trenutnog razgovora. Pokretanjem /ai new chat generirat će se novi ID povijesti i tako resetirati razgovor.",
+  "mcai.config.ais.aliases": "Pseudonimi",
+  "mcai.config.ais.aliases.description": "Pseudonimi su alternativna imena kojima možete spomenuti IA u chatu. Na primjer, kada pseudonimi sadrže 'hello', možete u chatu napisati '@hello' kako biste razgovarali s IA, umjesto s njegovim imenom."
+}

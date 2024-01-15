@@ -1,0 +1,20 @@
+{
+  "mcai.config.general": "一般",
+  "mcai.config.general.format": "メッセージフォーマット",
+  "mcai.config.general.format.description": "メッセージフォーマットは、AIによってメッセージがどのようにフォーマットされるかを決定します。{name}はユーザー名で置き換えられ、{message}は送信されたテキストで置き換えられます。",
+  "mcai.config.general.replyFormat": "返信フォーマット",
+  "mcai.config.general.replyFormat.description": "返信フォーマットは、AIメッセージがMinecraftのチャットに送信される際にどのようにフォーマットされるかを決定します。このオプションは主に、チャットのフォーマットを変更するMinecraftモッドを使用している場合に、AIメッセージが適合するようにするためにあります。",
+  "mcai.config.general.authorization": "認証",
+  "mcai.config.general.authorization.description": "これはhttps://c.aiアカウントの認証トークンです。https://c.aiに移動して取得できます -> 要素を検証 -> アプリケーション -> ローカルストレージ -> char_token -> 値。",
+  "mcai.config.general.register_and_unregister_min_permission_level": "制限コマンドレベル",
+  "mcai.config.general.register_and_unregister_min_permission_level.description": "制限コマンドレベルは、制限コマンドを実行するために必要な最小レベルです。現在、/ai registerと/ai unregisterは制限コマンドです。",
+  "mcai.config.ais": "AI",
+  "mcai.config.ais.name": "名前",
+  "mcai.config.ais.name.description": "これはAIの応答をフォーマットするときに使用される名前です。",
+  "mcai.config.ais.id": "ID",
+  "mcai.config.ais.id.description": "これはキャラクターIDです。https://c.aiからキャラクターのIDを取得できます。キャラクターとのチャットを開いてから 'char ='の後のテキストを選択します。",
+  "mcai.config.ais.history_id": "履歴ID",
+  "mcai.config.ais.history_id.description": "履歴IDは現在のチャットのIDです。/ai new chatを実行すると新しい履歴IDが生成され、会話がリセットされます。",
+  "mcai.config.ais.aliases": "エイリアス",
+  "mcai.config.ais.aliases.description": "エイリアスはチャットでAIを呼び出すための代替の名前です。たとえば、エイリアスに 'hello' が含まれている場合、チャットで '@hello' と入力してAIと話すことができます。"
+}

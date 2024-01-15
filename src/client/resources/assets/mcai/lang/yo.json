@@ -1,0 +1,20 @@
+{
+  "mcai.config.general": "General",
+  "mcai.config.general.format": "Ìṣẹ́ju ìṣẹ́",
+  "mcai.config.general.format.description": "Ìṣẹ́ju ìṣẹ́ ní ipa tó bá ilẹ̀-èdá rẹ̀ bá àwọn èdá mi pọ̀ láti pàtàkì lẹ́ AI. {name} yí o kọjá bọ̀ pẹ̀lú orúkọ rẹ̀, àti {message} yí o kọjá bọ̀ pẹ̀lú ọ̀rọ̀ ti o sì mú kí rẹ̀.",
+  "mcai.config.general.replyFormat": "Ìṣẹ́ju ìlò",
+  "mcai.config.general.replyFormat.description": "Ìṣẹ́ju ìlò ní ipa tó bá ilẹ̀-èdá rẹ̀ bá àwọn èdá mi pọ̀ láti pàtàkì lẹ́ AI ní ilẹ̀-èdá Minecraft. Ẹ̀dá kọọkan ìlò ẹ̀gbẹ̀ré ní ilẹ̀-èdá ló sì wọ̀ láti ẹ̀bọ̀ ní ipa kan, láti ẹ̀dá rẹ̀ kọjá.",
+  "mcai.config.general.authorization": "Àwọn Alábòdá",
+  "mcai.config.general.authorization.description": "Èdá ni àwọn àlábòdá ti ilẹ̀-èdá rẹ̀ https://c.ai. Ṣe àdá ní ilẹ̀ https://c.ai -> Wọ́ ẹ̀tọ̀ -> Ọ̀rọ̀ ìṣèlú -> Àkọwé ìdákọ -> char_token -> oṣù.",
+  "mcai.config.general.register_and_unregister_min_permission_level": "Ìlò ìpínlẹ̀ìkáyẹ̀",
+  "mcai.config.general.register_and_unregister_min_permission_level.description": "Ìlò ìpínlẹ̀ìkáyẹ̀ ni irò tí ìfẹ̀mi fún ní ìtẹ̀lọ́ sí àwọn èdá tí kò ní ilẹ̀-èdá. Ní ilẹ̀-èdá tí kò ní ilẹ̀-èdá Minecraft, ní ìgbẹ̀kẹ̀òṣi àpèjọ, /ai register àti /ai unregister láti ní irò tí ìtẹ̀lọ́ sí.",
+  "mcai.config.ais": "AI",
+  "mcai.config.ais.name": "Orúkọ",
+  "mcai.config.ais.name.description": "Yí orúkọ tí ilẹ̀-èdá yí ní ilọsíwájú ló bá ilẹ̀-èdá mi pàtàkì lẹ́ AI.",
+  "mcai.config.ais.id": "ID",
+  "mcai.config.ais.id.description": "Yí ID èdá tí ẹ le fẹ̀ gba láti https://c.ai ní ìṣe rẹ̀ tó bá wọ̀ ilẹ̀-èdá pẹ̀lú èdá kan, sì ẹ jẹ́ẹ̀ sọ ilẹ̀-èdá rẹ̀ pẹ̀lú ẹ̀dá mẹta sí wọn ló sì ẹ jẹ́ẹ̀ kọọkan sọ fún 'char='.",
+  "mcai.config.ais.history_id": "ID Ìtàn",
+  "mcai.config.ais.history_id.description": "ID ìtàn ni ID ti ilẹ̀-èdá rẹ̀ tí wọ́. Ní ilẹ̀-èdá Minecraft, ní ilẹ̀-èdá Minecraft, /ai new chat yó wọ́ ID ìtàn tuntun, àti sì yó rìn èdá rẹ̀ sílẹ̀ ní kúrọ.",
+  "mcai.config.ais.aliases": "Ẹ̀tọ̀",
+  "mcai.config.ais.aliases.description": "Ẹ̀tọ̀ wó ni orúkọ àkọsílẹ̀ tí ẹ le mú lọ sí ilẹ̀-èdá yó. Parọ̀, ní orúkọ kọọkan 'hello', ẹ le ṣe àtúnṣe ní ìwòrọ̀ '@hello' ní ilẹ̀-èdá, láti ńṣàkó àpèjọ tó ńṣẹ́lẹ̀."
+}

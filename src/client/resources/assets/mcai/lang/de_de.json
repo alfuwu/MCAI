@@ -1,0 +1,20 @@
+{
+  "mcai.config.general": "Allgemein",
+  "mcai.config.general.format": "Nachrichtenformat",
+  "mcai.config.general.format.description": "Das Nachrichtenformat bestimmt, wie Ihre Nachrichten für die KI formatiert werden. {name} wird durch Ihren Benutzernamen ersetzt, und {message} wird durch den von Ihnen gesendeten Text ersetzt.",
+  "mcai.config.general.replyFormat": "Antwortformat",
+  "mcai.config.general.replyFormat.description": "Das Antwortformat bestimmt, wie KI-Nachrichten formatiert werden, wenn sie in den Minecraft-Chat gesendet werden. Diese Option ist hauptsächlich für diejenigen gedacht, die ein Minecraft-Mod haben, das die Formatierung des Chats ändert, damit die KI-Nachrichten passen.",
+  "mcai.config.general.authorization": "Autorisierung",
+  "mcai.config.general.authorization.description": "Dies ist das Autorisierungstoken Ihres https://c.ai-Kontos. Holen Sie es sich, indem Sie zu https://c.ai gehen -> Element inspizieren -> Anwendung -> Lokaler Speicher -> char_token -> Wert.",
+  "mcai.config.general.register_and_unregister_min_permission_level": "Eingeschränktes Befehlsniveau",
+  "mcai.config.general.register_and_unregister_min_permission_level.description": "Das eingeschränkte Befehlsniveau ist das erforderliche Mindestniveau für das Ausführen eingeschränkter Befehle. Derzeit sind nur /ai register und /ai unregister eingeschränkte Befehle.",
+  "mcai.config.ais": "KIs",
+  "mcai.config.ais.name": "Name",
+  "mcai.config.ais.name.description": "Dies ist der Name, den das Antwortformat verwendet, wenn es KI-Antworten formatiert.",
+  "mcai.config.ais.id": "ID",
+  "mcai.config.ais.id.description": "Dies ist die Charakter-ID. Sie können die ID eines Charakters von https://c.ai erhalten, indem Sie einen Chat mit einem Charakter öffnen und dann den Text nach 'char=' auswählen.",
+  "mcai.config.ais.history_id": "Verlauf-ID",
+  "mcai.config.ais.history_id.description": "Die Verlauf-ID ist die ID Ihres aktuellen Chats. Durch Ausführen von /ai new chat wird eine neue Verlauf-ID generiert und somit das Gespräch zurückgesetzt.",
+  "mcai.config.ais.aliases": "Alias",
+  "mcai.config.ais.aliases.description": "Alias sind alternative Namen, mit denen Sie die KI im Chat ansprechen können. Wenn Alias 'hello' enthält, können Sie im Chat '@hello' eingeben, um mit der KI zu sprechen, anstatt ihren Namen."
+}

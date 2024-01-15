@@ -1,0 +1,20 @@
+{
+  "mcai.config.general": "Umum",
+  "mcai.config.general.format": "Format Pesan",
+  "mcai.config.general.format.description": "Format pesan menentukan bagaimana pesan-pesan Anda akan diformat untuk KI. {name} akan digantikan dengan nama pengguna Anda, dan {message} akan digantikan dengan teks yang Anda kirim.",
+  "mcai.config.general.replyFormat": "Format Balasan",
+  "mcai.config.general.replyFormat.description": "Format balasan menentukan bagaimana pesan KI akan diformat ketika dikirim ke dalam obrolan Minecraft. Opsi ini sebagian besar ada untuk mereka yang memiliki mod Minecraft yang mengubah bagaimana obrolan diformat, sehingga pesan KI dapat sesuai.",
+  "mcai.config.general.authorization": "Otorisasi",
+  "mcai.config.general.authorization.description": "Ini adalah token otorisasi akun https://c.ai Anda. Dapatkan dengan pergi ke https://c.ai -> Inspeksi Elemen -> Aplikasi -> Penyimpanan Lokal -> char_token -> nilai.",
+  "mcai.config.general.register_and_unregister_min_permission_level": "Tingkat Perintah Terbatas",
+  "mcai.config.general.register_and_unregister_min_permission_level.description": "Tingkat perintah terbatas adalah tingkat minimum yang diperlukan untuk menjalankan perintah terbatas. Saat ini, hanya perintah /ai register dan /ai unregister yang terbatas.",
+  "mcai.config.ais": "KI",
+  "mcai.config.ais.name": "Nama",
+  "mcai.config.ais.name.description": "Ini adalah nama yang akan digunakan Format Balasan saat memformat respons KI.",
+  "mcai.config.ais.id": "ID",
+  "mcai.config.ais.id.description": "Ini adalah ID karakter. Anda dapat memperoleh ID karakter dari https://c.ai dengan membuka obrolan dengan karakter dan kemudian memilih teks setelah 'char='.",
+  "mcai.config.ais.history_id": "ID Riwayat",
+  "mcai.config.ais.history_id.description": "ID riwayat adalah ID obrolan Anda saat ini. Menjalankan /ai new chat akan menghasilkan ID riwayat baru, dan dengan demikian mengatur ulang percakapan.",
+  "mcai.config.ais.aliases": "Alias",
+  "mcai.config.ais.aliases.description": "Alias adalah nama alternatif yang dapat Anda gunakan untuk menyapa KI dalam obrolan. Misalnya, ketika alias berisi 'hello', Anda dapat mengetik '@hello' dalam obrolan untuk berbicara dengan KI, bukannya menggunakan namanya."
+}

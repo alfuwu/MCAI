@@ -1,0 +1,20 @@
+{
+  "mcai.config.general": "Cyffredinol",
+  "mcai.config.general.format": "Fformat Neges",
+  "mcai.config.general.format.description": "Mae'r fformat neges yn pennu sut y caiff eich negeseuon eu fformatio ar gyfer y Cefnint. Caiff {name} ei ail-leisio gyda'ch enw defnyddiwr, a chaiff {message} ei ail-leisio gyda'r testun a anfonwyd gennych.",
+  "mcai.config.general.replyFormat": "Fformat Ateb",
+  "mcai.config.general.replyFormat.description": "Mae'r fformat ateb yn pennu sut y caiff negeseuon AI eu fformatio pan eu hanfon i sgwrs Minecraft. Mae'r opsiwn hwn yn bennaf yma i'r rheini sydd â mod Minecraft sy'n newid sut mae'r sgwrs wedi'i fformatio, fel y gall negeseuon AI ffitio mewn.",
+  "mcai.config.general.authorization": "Awdurdodi",
+  "mcai.config.general.authorization.description": "Dyma docyn awdurdodi eich cyfrif https://c.ai. Cewch ei gael drwy fynd i https://c.ai -> Arolygu Eitem -> Ymgeisio -> Storio Lleol -> char_token -> gwerth.",
+  "mcai.config.general.register_and_unregister_min_permission_level": "Lefel Gorchymyn Cyfyngedig",
+  "mcai.config.general.register_and_unregister_min_permission_level.description": "Lefel gorchymyn cyfyngedig yw'r lefel isaf sy'n ofynnol i redeg gorchymynion cyfyngedig. Ar hyn o bryd, dim ond /ai register a /ai unregister yw'r gorchymynion cyfyngedig.",
+  "mcai.config.ais": "AIs",
+  "mcai.config.ais.name": "Enw",
+  "mcai.config.ais.name.description": "Dyma'r enw y bydd Fformat Ateb yn ei ddefnyddio wrth fformatio ymatebion AI.",
+  "mcai.config.ais.id": "ID",
+  "mcai.config.ais.id.description": "Dyma'r ID cymeriad. Gallwch gael ID cymeriad o https://c.ai drwy agor sgwrs â chymeriad ac yna dewis y testun ar ôl 'char='. ",
+  "mcai.config.ais.history_id": "Hanes ID",
+  "mcai.config.ais.history_id.description": "Hanes ID yw ID eich sgwrs bresennol. Bydd rhedeg /ai new chat yn cynhyrchu Hanes ID newydd, ac felly'n ailosod y sgwrs.",
+  "mcai.config.ais.aliases": "Aliasau",
+  "mcai.config.ais.aliases.description": "Aliasau yw enwau amgen y gallwch bingio AI ynddynt yn y sgwrs. Er enghraifft, pan mae aliasau yn cynnwys 'hello', gallwch deipio '@hello' yn y sgwrs i siarad gyda'r AI, yn hytrach na'i enw."
+}

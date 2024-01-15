@@ -1,0 +1,37 @@
+{
+	"schemaVersion": 1,
+	"id": "mcai",
+	"version": "${version}",
+	"name": "Minecraft AI",
+	"description": "This mod is an interface with https://c.ai, allowing you to interact with AI inside of the game!",
+	"authors": [
+		"Alfred uwu"
+	],
+	"contact": {
+		"homepage": "https://discord.gg/E8HxEhKqCg"
+	},
+	"license": "MIT",
+	"icon": "assets/mcai/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"com.alfred.ai.MCAIMod"
+		],
+		"client": [
+			"com.alfred.ai.MCAIModClient"
+		]
+	},
+	"mixins": [
+		"mcai.mixins.json",
+		{
+			"config": "mcai.client.mixins.json",
+			"environment": "client"
+		}
+	],
+	"depends": {
+		"fabricloader": ">=0.15.0",
+		"minecraft": "~1.20.4",
+		"java": ">=17",
+		"fabric-api": "*"
+	}
+}
