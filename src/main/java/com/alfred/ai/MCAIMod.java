@@ -1,18 +1,16 @@
 package com.alfred.ai;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import io.netty.buffer.Unpooled;
 import me.shedaniel.autoconfig.AutoConfig;
 import me.shedaniel.autoconfig.serializer.Toml4jConfigSerializer;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.message.v1.ServerMessageEvents;
-import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
-import net.minecraft.network.PacketByteBuf;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.util.Identifier;
+import net.minecraft.text.Text;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,8 +27,6 @@ public class MCAIMod implements ModInitializer {
 	// That way, it's clear which mod wrote info, warnings, and errors.
 	public static final String MODID = "mcai";
 	public static final Logger LOGGER = LoggerFactory.getLogger(MODID);
-	public static final Identifier CHAT = new Identifier(MODID, "chat");
-	public static final Identifier QUERY_AI_GLOBAL = new Identifier(MODID, "ask_ai_global");
 	public static MinecraftServer modServer = null;
 	public static JavaCAI characterAI;
 
@@ -44,17 +40,12 @@ public class MCAIMod implements ModInitializer {
 
 		// Register the config file
 		AutoConfig.register(MCAIConfig.class, Toml4jConfigSerializer::new);
+		MCAIConfig config = MCAIConfig.getInstance();
 		// Create a C.AI instance
-		characterAI = new JavaCAI(MCAIConfig.getInstance().General.authorization);
+		characterAI = new JavaCAI(config.General.authorization);
 
-		// Register the network channel
-		ServerPlayNetworking.registerGlobalReceiver(CHAT, (server, player, handler, buf, responseSender) -> {
-			// Handle received message
-		});
-		ServerPlayNetworking.registerGlobalReceiver(QUERY_AI_GLOBAL, (server, player, handler, buf, responseSender) -> {
-			String text = buf.readString();
-			MCAIConfig config = MCAIConfig.getInstance();
-
+		ServerMessageEvents.CHAT_MESSAGE.register((message, sender, params) -> {
+			String text = message.getSignedContent();
 			for (MCAIConfig.CharacterTuple tuple : config.AIs) {
 				if (tuple.disabled) // ignore disabled AIs
 					continue;
@@ -70,8 +61,8 @@ public class MCAIMod implements ModInitializer {
 						if (text.toLowerCase().startsWith(String.format("@%s", name.toLowerCase())))
 							text = text.substring(name.length() + 1); // chop off starting ping
 						sendAIMessage(
-								text, tuple, player != null ? player.getName().getLiteralString() : "Anonymous",
-								config.General.format, config.General.replyFormat, server);
+								text, tuple, sender != null ? sender.getName().getLiteralString() : "Anonymous",
+								config.General.format, config.General.replyFormat, sender != null ? sender.getServer() : modServer);
 						break;
 					}
 				}
@@ -83,14 +74,32 @@ public class MCAIMod implements ModInitializer {
 		ServerMessageEvents.GAME_MESSAGE.register(((server, message, bool) -> {
 
 		}));
+		ServerTickEvents.START_SERVER_TICK.register((server -> {
+			for (MCAIConfig.CharacterTuple tuple : config.AIs) {
 
+			}
+		}));
+	}
+
+	public static Tuple<Double> divmod(double num, double div) {
+		double quotient = Math.floor(num / div);
+		double remainder = num % div;
+		return new Tuple(quotient, remainder);
+	}
+
+	public static Object generalizeNumber(double value, double number) {
+		if (value == 1.0) {
+			return number;
+		} else if (value == 0.0) {
+			return "some number";
+		} else {
+			double powerOf10 = Math.pow(10, (int) (-value * 10) + 1);
+			return Math.round(number / powerOf10) * powerOf10;
+		}
 	}
 
 	public static void sendPrivateMessage(String message, ServerPlayerEntity player) {
-		PacketByteBuf buf = new PacketByteBuf(Unpooled.buffer());
-		buf.writeString(message);
-
-		ServerPlayNetworking.send(player, CHAT, buf);
+		player.sendMessage(Text.literal(message));
 	}
 
 	public static void sendGlobalMessage(String text, MinecraftServer server) {
