@@ -7,6 +7,7 @@ import me.shedaniel.autoconfig.serializer.Toml4jConfigSerializer;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.fabricmc.fabric.api.message.v1.ServerMessageEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.network.PacketByteBuf;
 import net.minecraft.server.MinecraftServer;
@@ -27,8 +28,7 @@ public class MCAIMod implements ModInitializer {
 	// It is considered best practice to use your mod id as the logger's name.
 	// That way, it's clear which mod wrote info, warnings, and errors.
 	public static final String MODID = "mcai";
-
-    public static final Logger LOGGER = LoggerFactory.getLogger(MODID);
+	public static final Logger LOGGER = LoggerFactory.getLogger(MODID);
 	public static final Identifier CHAT = new Identifier(MODID, "chat");
 	public static final Identifier QUERY_AI_GLOBAL = new Identifier(MODID, "ask_ai_global");
 	public static MinecraftServer modServer = null;
@@ -69,14 +69,9 @@ public class MCAIMod implements ModInitializer {
 					if (text.toLowerCase().contains(String.format("@%s", name.toLowerCase()))) {
 						if (text.toLowerCase().startsWith(String.format("@%s", name.toLowerCase())))
 							text = text.substring(name.length() + 1); // chop off starting ping
-						Runnable task = new AIResponse(
-								tuple, text,
-								player != null ? player.getName().getLiteralString() : "Anonymous",
-								config.General.format,
-								config.General.replyFormat,
-								server);
-						Thread thread = new Thread(null, task, "HTTP thread");
-						thread.start();
+						sendAIMessage(
+								text, tuple, player != null ? player.getName().getLiteralString() : "Anonymous",
+								config.General.format, config.General.replyFormat, server);
 						break;
 					}
 				}
@@ -85,6 +80,10 @@ public class MCAIMod implements ModInitializer {
 
 		ServerLifecycleEvents.SERVER_STARTED.register((server -> modServer = modServer == null ? server : modServer)); // set modServer to the server on startup
 		CommandRegistrationCallback.EVENT.register(((dispatcher, registryAccess, environment) -> MCAICommands.register(dispatcher)));
+		ServerMessageEvents.GAME_MESSAGE.register(((server, message, bool) -> {
+
+		}));
+
 	}
 
 	public static void sendPrivateMessage(String message, ServerPlayerEntity player) {
@@ -94,13 +93,18 @@ public class MCAIMod implements ModInitializer {
 		ServerPlayNetworking.send(player, CHAT, buf);
 	}
 
-
 	public static void sendGlobalMessage(String text, MinecraftServer server) {
 		server.getPlayerManager().getPlayerList().forEach(player -> sendPrivateMessage(text, player));
 	}
 
 	public static void sendGlobalMessage(String text, List<ServerPlayerEntity> players) {
 		players.forEach(player -> sendPrivateMessage(text, player));
+	}
+
+	public static void sendAIMessage(String text, MCAIConfig.CharacterTuple tuple, String name, String format, String replyFormat, MinecraftServer server) {
+		Runnable task = new AIResponse(tuple, text, name, format, replyFormat, server);
+		Thread thread = new Thread(null, task, "HTTP thread");
+		thread.start();
 	}
 
 	/*/ public static ServerPlayerEntity convertClientPlayerEntityToServerPlayerEntity(PlayerEntity clientPlayerEntity) {

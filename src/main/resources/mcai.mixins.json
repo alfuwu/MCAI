@@ -2,7 +2,9 @@
 	"required": true,
 	"package": "com.alfred.ai.mixin",
 	"compatibilityLevel": "JAVA_17",
-	"mixins": [],
+	"mixins": [
+		"AdvancementMixin"
+	],
 	"injectors": {
 		"defaultRequire": 1
 	}
