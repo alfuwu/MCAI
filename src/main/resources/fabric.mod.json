@@ -5,7 +5,7 @@
 	"name": "Minecraft AI",
 	"description": "This mod is an interface with https://c.ai, allowing you to interact with AI inside of the game!",
 	"authors": [
-		"Alfred uwu"
+		"alfred uwu"
 	],
 	"contact": {
 		"homepage": "https://discord.gg/E8HxEhKqCg"
@@ -16,12 +16,6 @@
 	"entrypoints": {
 		"main": [
 			"com.alfred.ai.MCAIMod"
-		],
-		"client": [
-			"com.alfred.ai.MCAIModClient"
-		],
-		"modmenu": [
-			"com.alfred.ai.ModMenuIntegration"
 		]
 	},
 	"mixins": [
