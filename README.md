@@ -29,14 +29,23 @@ There are two methods to chat with registered AIs - pinging them in a message vi
 
 ## Commands
 `/ai authorize <token>` - an admin-only command that changes the access token the mod uses to interface with [c.ai](https://c.ai) from in-game.
+
 `/ai context <name> <broadcast (optional)>` - retrieves the last few messages from the chat with the AI. Note that changing the `format` in the MCAI config may or may not cause it to fail when retrieving the name of the message sender. As the command defaults to only giving you context, broadcast is an available option for admins to broadcast the last few messages to everyone in chat.
+
 `/ai disable <name>` - like `/ai unregister`, but less permanent.
+
 `/ai enable <name>` - undoes `/ai disable`.
+
 `/ai list` - lists all available AIs and relevant information (such as whether they're enabled, and their aliases).
+
 `/ai register <character id> <aliases (optional)>` - character ID is the ID obtained from the [c.ai](https://c.ai) website. Registers an AI so that you can chat with 'em.
+
 `/ai unregister <character id>` - permanently removes an AI.
+
 `/ai reload` - reloads the mod's config so that any edits made with an external tool are loaded without requiring a complete restart of Minecraft.
+
 `/ai reset <name>` - wipes the memory of an AI.
+
 `/ai talk <name> <text>` - alternative to pinging the AI that's arguably more clunky.
 
 ## FAQ
