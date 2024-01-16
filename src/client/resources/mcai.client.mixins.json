@@ -1,9 +1,9 @@
 {
 	"required": true,
-	"package": "com.alfred.ai.mixin.client",
+	"package": "com.alfred.ai.mixin",
 	"compatibilityLevel": "JAVA_17",
 	"client": [
-		"ChatMessagesMixin"
+		
 	],
 	"injectors": {
 		"defaultRequire": 1
