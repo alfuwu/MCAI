@@ -10,6 +10,7 @@
   "mcai.messages.disabled_ai": "%s will no longer respond to any future pings until re-enabled.",
   "mcai.messages.ai_list": "List of available AIs:%s",
   "mcai.messages.authorized": "Successfully authorized connection.",
+  "mcai.messages.config_reload_success": "Successfully reloaded configuration file.",
   "mcai.messages.enabled": "(enabled)",
   "mcai.messages.disabled": "(disabled)",
   "mcai.config.general": "General",

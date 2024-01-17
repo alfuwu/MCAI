@@ -9,7 +9,7 @@ import me.shedaniel.autoconfig.annotation.ConfigEntry;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.ZoneOffset;
 import java.time.Duration;
@@ -40,8 +40,11 @@ public class MCAIConfig implements ConfigData {
         public String authorization;
         public int adminPermissionLevel;
         public boolean disableRandomResponses;
+        public boolean disableRandomTalking;
         public boolean disableAdvancementResponses;
         public boolean disableRecipeResponses;
+        public String randomTalkMessage;
+        public String systemName;
 
         public General(String format, String replyFormat, String authorization, int adminPermissionLevel) {
             this.format = format;
@@ -49,8 +52,11 @@ public class MCAIConfig implements ConfigData {
             this.authorization = authorization;
             this.adminPermissionLevel = adminPermissionLevel;
             this.disableRandomResponses = false;
+            this.disableRandomTalking = false;
             this.disableAdvancementResponses = false;
             this.disableRecipeResponses = true;
+            this.randomTalkMessage = "Nobody has talked for {time}.";
+            this.systemName = "SYSTEM";
         }
     }
 
@@ -59,34 +65,36 @@ public class MCAIConfig implements ConfigData {
         public String ID;
         public String historyID;
         public String[] aliases;
-        public float advancementChance;
-        public Map<String, Float> advancementOverrideChances;
-        public float deathChance;
-        public int minimumTicks;
-        public float talkIntervalSpecificity;
+        public float advancementResponseChance;
+        public Map<String, Float> advancementResponseOverrideChances;
+        public float deathResponseChance;
+        public float randomResponseChance;
+        public float randomTalkChance;
+        public double minimumSecondsBeforeRandomTalking;
+        public double talkIntervalSpecificity;
         private String lastCommunicatedWith;
         public boolean disabled;
 
-        public LocalDateTime getLastCommunicatedWith() {
+        public ZonedDateTime getLastCommunicatedWith() {
             if (lastCommunicatedWith == null)
                 return null;
             else
-                return LocalDateTime.parse(lastCommunicatedWith, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+                return ZonedDateTime.parse(lastCommunicatedWith);
         }
 
-        public Object getLastCommunicatedWith(LocalDateTime time) {
+        public double getLastCommunicatedWith(ZonedDateTime time) {
             if (lastCommunicatedWith == null)
-                return null;
+                return -1; // can't return null because AAAAAAAAA
             else
-                return Duration.between(getLastCommunicatedWith().toInstant(ZoneOffset.UTC), time.toInstant(ZoneOffset.UTC)).toMillis() / 1000.0d;
+                return Duration.between(getLastCommunicatedWith().toInstant(), time.toInstant()).toMillis() / 1000.0d;
         }
 
         public void setLastCommunicatedWith() {
-            lastCommunicatedWith = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+            setLastCommunicatedWith(ZonedDateTime.now());
         }
 
-        public void setLastCommunicatedWith(LocalDateTime time) {
-            lastCommunicatedWith = time.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        public void setLastCommunicatedWith(ZonedDateTime time) {
+            lastCommunicatedWith = time.format(DateTimeFormatter.ISO_DATE_TIME);
         }
 
         public CharacterTuple(String name, String ID, String historyID, String[] aliases) {
@@ -94,10 +102,13 @@ public class MCAIConfig implements ConfigData {
             this.ID = ID;
             this.historyID = historyID;
             this.aliases = aliases;
-            this.advancementChance = 0.5f; // default chance to respond to advancements
-            this.advancementOverrideChances = new HashMap<>();
-            this.deathChance = 0.5f; // default chance to respond to deaths
-            this.talkIntervalSpecificity = 0.2f; // default specificity for talk interval (how specific the data is)
+            this.advancementResponseChance = 0.5f; // default chance to respond to advancements
+            this.advancementResponseOverrideChances = new HashMap<>();
+            this.deathResponseChance = 0.5f; // default chance to respond to deaths
+            this.randomResponseChance = 0.069f; // default chance to respond to random chat messages
+            this.randomTalkChance = 0.002f; // per tick
+            this.minimumSecondsBeforeRandomTalking = 100;
+            this.talkIntervalSpecificity = 0.2; // default specificity for talk interval (how specific the data is)
             this.lastCommunicatedWith = null;
             this.disabled = false;
         }

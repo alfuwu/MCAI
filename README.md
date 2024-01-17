@@ -63,7 +63,7 @@ A: You can disable random responses by switching the `disableRandomResponses` to
 
 Q: Will you make a Forge port?
 
-A: No. You're welcome to port it yourself, if you really want it on Forge, though.
+A: Nope! You're welcome to port it yourself, if you really want it on Forge, though.
 
 ## License
 This project uses the MIT license. Feel free to do whatever the fuck you want with it.

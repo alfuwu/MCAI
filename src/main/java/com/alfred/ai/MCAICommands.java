@@ -22,54 +22,60 @@ import static com.alfred.ai.MCAIMod.*;
 public class MCAICommands {
     public static void register(CommandDispatcher dispatcher) {
         dispatcher.register(CommandManager.literal("ai")
-                .then(CommandManager.literal("register") // command to add an AI
-                        .requires(source -> source.hasPermissionLevel(MCAIConfig.getInstance().General.adminPermissionLevel) || Objects.requireNonNull(source.getPlayer()).isMainPlayer())
-                        .then(CommandManager.argument("character_id", StringArgumentType.word())
-                                .executes(context -> registerCharacter(context.getSource(),
-                                        StringArgumentType.getString(context, "character_id"), ""))
-                                .then(CommandManager.argument("aliases", StringArgumentType.greedyString())
-                                        .executes(context -> registerCharacter(context.getSource(),
-                                                StringArgumentType.getString(context, "character_id"),
-                                                StringArgumentType.getString(context, "aliases"))))))
-                .then(CommandManager.literal("unregister") // command to remove an AI completely
-                        .requires(source -> source.hasPermissionLevel(MCAIConfig.getInstance().General.adminPermissionLevel) || Objects.requireNonNull(source.getPlayer()).isMainPlayer())
-                        .then(CommandManager.argument("character_id", StringArgumentType.word())
-                                .executes(context -> unregisterCharacter(context.getSource(),
-                                        StringArgumentType.getString(context, "character_id")))))
-                .then(CommandManager.literal("talk") // command to talk to an AI (alternative to pinging)
-                        .then(CommandManager.argument("name", StringArgumentType.word())
-                                .then(CommandManager.argument("text", StringArgumentType.greedyString())
-                                        .executes(context -> talk(context.getSource(),
-                                                StringArgumentType.getString(context, "name"),
-                                                StringArgumentType.getString(context, "text"))))))
-                .then(CommandManager.literal("context") // retrieves the last few messages
-                        .then(CommandManager.argument("name", StringArgumentType.word())
-                                .executes(context -> getContext(context.getSource(),
-                                        StringArgumentType.getString(context, "name"), false))
-                                .then(CommandManager.argument("broadcast", BoolArgumentType.bool())
-                                        .requires(source -> source.hasPermissionLevel(MCAIConfig.getInstance().General.adminPermissionLevel) || Objects.requireNonNull(source.getPlayer()).isMainPlayer())
-                                        .executes(context -> getContext(context.getSource(),
-                                                StringArgumentType.getString(context, "name"),
-                                                BoolArgumentType.getBool(context, "broadcast"))))))
-                .then(CommandManager.literal("reset") // resets the chat and sends the greeting
-                        .then(CommandManager.argument("name", StringArgumentType.word())
-                                .executes(context -> newChat(context.getSource(),
-                                        StringArgumentType.getString(context, "name")))))
-                .then(CommandManager.literal("enable") // enables the AI (allows it to respond to pings)
-                        .then(CommandManager.argument("name", StringArgumentType.word())
-                                .executes(context -> startChat(context.getSource(),
-                                        StringArgumentType.getString(context, "name")))))
-                .then(CommandManager.literal("disable") // disables the AI (prevents it from responding to pings)
-                        .then(CommandManager.argument("name", StringArgumentType.word())
-                                .executes(context -> stopChat(context.getSource(),
-                                        StringArgumentType.getString(context, "name")))))
-                .then(CommandManager.literal("authorize") // enables the AI (allows it to respond to pings)
-                        .then(CommandManager.argument("token", StringArgumentType.word())
+                        .then(CommandManager.literal("register") // command to add an AI
                                 .requires(source -> source.hasPermissionLevel(MCAIConfig.getInstance().General.adminPermissionLevel) || Objects.requireNonNull(source.getPlayer()).isMainPlayer())
-                                .executes(context -> authorize(context.getSource(),
-                                        StringArgumentType.getString(context, "token")))))
-                .then(CommandManager.literal("list") // lists available AIs
-                        .executes(context -> list(context.getSource()))));
+                                .then(CommandManager.argument("character_id", StringArgumentType.word())
+                                        .executes(context -> registerCharacter(context.getSource(),
+                                                StringArgumentType.getString(context, "character_id"), ""))
+                                        .then(CommandManager.argument("aliases", StringArgumentType.greedyString())
+                                                .executes(context -> registerCharacter(context.getSource(),
+                                                        StringArgumentType.getString(context, "character_id"),
+                                                        StringArgumentType.getString(context, "aliases"))))))
+                        .then(CommandManager.literal("unregister") // command to remove an AI completely
+                                .requires(source -> source.hasPermissionLevel(MCAIConfig.getInstance().General.adminPermissionLevel) || Objects.requireNonNull(source.getPlayer()).isMainPlayer())
+                                .then(CommandManager.argument("character_id", StringArgumentType.word())
+                                        .executes(context -> unregisterCharacter(context.getSource(),
+                                                StringArgumentType.getString(context, "character_id")))))
+                        .then(CommandManager.literal("talk") // command to talk to an AI (alternative to pinging)
+                                .then(CommandManager.argument("name", StringArgumentType.word())
+                                        .then(CommandManager.argument("text", StringArgumentType.greedyString())
+                                                .executes(context -> talk(context.getSource(),
+                                                        StringArgumentType.getString(context, "name"),
+                                                        StringArgumentType.getString(context, "text"))))))
+                        .then(CommandManager.literal("context") // retrieves the last few messages
+                                .then(CommandManager.argument("name", StringArgumentType.word())
+                                        .executes(context -> getContext(context.getSource(),
+                                                StringArgumentType.getString(context, "name"), false))
+                                        .then(CommandManager.argument("broadcast", BoolArgumentType.bool())
+                                                .requires(source -> source.hasPermissionLevel(MCAIConfig.getInstance().General.adminPermissionLevel) || Objects.requireNonNull(source.getPlayer()).isMainPlayer())
+                                                .executes(context -> getContext(context.getSource(),
+                                                        StringArgumentType.getString(context, "name"),
+                                                        BoolArgumentType.getBool(context, "broadcast"))))))
+                        .then(CommandManager.literal("reset") // resets the chat and sends the greeting
+                                .then(CommandManager.argument("name", StringArgumentType.word())
+                                        .executes(context -> newChat(context.getSource(),
+                                                StringArgumentType.getString(context, "name")))))
+                        .then(CommandManager.literal("enable") // enables the AI (allows it to respond to pings)
+                                .then(CommandManager.argument("name", StringArgumentType.word())
+                                        .executes(context -> toggleAI(context.getSource(),
+                                                StringArgumentType.getString(context, "name"), false))))
+                        .then(CommandManager.literal("disable") // disables the AI (prevents it from responding to pings)
+                                .then(CommandManager.argument("name", StringArgumentType.word())
+                                        .executes(context -> toggleAI(context.getSource(),
+                                                StringArgumentType.getString(context, "name"), true))))
+                        .then(CommandManager.literal("authorize") // enables the AI (allows it to respond to pings)
+                                .then(CommandManager.argument("token", StringArgumentType.word())
+                                        .requires(source -> source.hasPermissionLevel(MCAIConfig.getInstance().General.adminPermissionLevel) || Objects.requireNonNull(source.getPlayer()).isMainPlayer())
+                                        .executes(context -> authorize(context.getSource(),
+                                                StringArgumentType.getString(context, "token")))))
+                        .then(CommandManager.literal("reload") // reloads the config
+                                .requires(source -> source.hasPermissionLevel(MCAIConfig.getInstance().General.adminPermissionLevel) || Objects.requireNonNull(source.getPlayer()).isMainPlayer())
+                                .executes(context -> {
+                                    MCAIConfig.load();
+                                    context.getSource().sendFeedback(() -> Text.translatable("mcai.messages.config_reload_success"),true);
+                                    return 1;}))
+                        .then(CommandManager.literal("list") // lists available AIs
+                                .executes(context -> list(context.getSource()))));
     }
 
     private static int registerCharacter(ServerCommandSource source, String characterID, String aliases) {
@@ -178,9 +184,9 @@ public class MCAICommands {
                                                 reversedFormat.get(0) :
                                                 chat.get("messages").get(messageIndex).get("src_char").get("participant").get("name").asText())
                                         .replace("{message}", reversedFormat.get(1).equals("") ?
-                                                        text :
-                                                        reversedFormat.get(1).charAt(0) == ' ' ?
-                                                                reversedFormat.get(1).substring(1) : reversedFormat.get(1));
+                                                text :
+                                                reversedFormat.get(1).charAt(0) == ' ' ?
+                                                        reversedFormat.get(1).substring(1) : reversedFormat.get(1));
                                 if (broadcast) {
                                     sendGlobalMessage(text, source.getServer());
                                 } else {
@@ -190,7 +196,7 @@ public class MCAICommands {
                                 break;
                             }
                         }
-                        return 0;
+                        return 1;
                     } catch (IOException e) {
                         e.printStackTrace();
                         throw new RuntimeException(e);
@@ -227,36 +233,17 @@ public class MCAICommands {
         return 0;
     }
 
-    private static int startChat(ServerCommandSource source, String name) {
+    private static int toggleAI(ServerCommandSource source, String name, boolean disable) {
         boolean foundAnAI = false;
         for (MCAIConfig.CharacterTuple tuple : MCAIConfig.getInstance().AIs) {
             if (tuple.name.equalsIgnoreCase(name) || Arrays.stream(tuple.aliases).anyMatch(alias -> alias.equalsIgnoreCase(name))) {
                 foundAnAI = true;
-                if (tuple.disabled) {
-                    tuple.disabled = false;
+                if (tuple.disabled == !disable) {
+                    tuple.disabled = disable;
                     MCAIConfig.save();
                     MCAIConfig.load();
                     //source.sendMessage(Text.translatable("mcai.messages.enabled_ai", tuple.name));
-                    source.sendFeedback(() -> Text.translatable("mcai.messages.enabled_ai", tuple.name), true);
-                    return 1;
-                }
-            }
-        }
-        source.sendError(Text.translatable(!foundAnAI ? "mcai.errors.ai_not_found" : "mcai.errors.no_suitable_ai_found", name));
-        return 0;
-    }
-
-    private static int stopChat(ServerCommandSource source, String name) {
-        boolean foundAnAI = false;
-        for (MCAIConfig.CharacterTuple tuple : MCAIConfig.getInstance().AIs) {
-            if (tuple.name.equalsIgnoreCase(name) || Arrays.stream(tuple.aliases).anyMatch(alias -> alias.equalsIgnoreCase(name))) {
-                foundAnAI = true;
-                if (!tuple.disabled) {
-                    tuple.disabled = true;
-                    MCAIConfig.save();
-                    MCAIConfig.load();
-                    //source.sendMessage(Text.translatable("mcai.messages.disabled_ai", tuple.name));
-                    source.sendFeedback(() -> Text.translatable("mcai.messages.disabled_ai", tuple.name), true);
+                    source.sendFeedback(() -> Text.translatable(String.format("mcai.messages.%sabled_ai", disable ? "dis" : "en"), tuple.name), true);
                     return 1;
                 }
             }

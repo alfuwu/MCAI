@@ -16,7 +16,7 @@ import net.minecraft.advancement.AdvancementProgress;
 @Mixin(PlayerAdvancementTracker.class)
 public abstract class AdvancementMixin {
     @Shadow
-    private ServerPlayerEntity owner; // allows getting the player's name
+    private ServerPlayerEntity owner; // allows getting player data
     @Shadow
     public abstract AdvancementProgress getProgress(AdvancementEntry advancement);
 
@@ -29,7 +29,7 @@ public abstract class AdvancementMixin {
                 // execute advancement code here
                 //advancement.id().getPath().startsWith("recipes"); // recipe advancements
             }
-            advancementProgress.reset(criterionName); // reset so that actual grantCriterion code can run
+            advancementProgress.reset(criterionName); // reset so that actual grantCriterion code can run properly
         }
     }
 }

@@ -22,11 +22,7 @@
 		]
 	},
 	"mixins": [
-		"mcai.mixins.json",
-		{
-			"config": "mcai.client.mixins.json",
-			"environment": "client"
-		}
+		"mcai.mixins.json"
 	],
 	"depends": {
 		"fabricloader": ">=0.15.0",
