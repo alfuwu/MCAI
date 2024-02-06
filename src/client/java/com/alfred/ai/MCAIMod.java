@@ -1,17 +1,14 @@
 package com.alfred.ai;
 
-import io.netty.buffer.Unpooled;
 import com.fasterxml.jackson.databind.JsonNode;
 import me.shedaniel.autoconfig.AutoConfig;
 import me.shedaniel.autoconfig.serializer.Toml4jConfigSerializer;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
-import net.fabricmc.fabric.api.message.v1.ServerMessageEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.network.PacketByteBuf;
-import net.minecraft.util.Identifier;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.util.Identifier;
 import net.minecraft.text.Text;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,7 +19,7 @@ import java.time.ZonedDateTime;
 import java.util.*;
 
 import static com.alfred.ai.MCAIMod.characterAI;
-import static com.alfred.ai.MCAIMod.sendGlobalMessage;
+import static com.alfred.ai.MCAIMod.sendMessage;
 
 public class MCAIMod implements ClientModInitializer {
 	public static final String MODID = "mcai";
@@ -40,12 +37,15 @@ public class MCAIMod implements ClientModInitializer {
 		characterAI = new JavaCAI(config.General.authorization);
 		Random random = new Random();
 
-		// if the server sends a packet through the specified packet ID, assume MCAI is on the server
-		// if MCAI is on the server, this mod will do nothing
-		ClientPlayNetworking.registerGlobalReceiver(ON_SERVER_PACKET_ID, (client, handler, buf, responseSender) -> onServer = true);
+		// if the server echos an empty packet through the specified networking ID, assume MCAI is on the server
+		// if MCAI is on the server, the client-sided version will do nothing
+		ClientPlayNetworking.registerGlobalReceiver(ON_SERVER_PACKET_ID, (client, handler, buf, responseSender) -> onServer = buf.equals(PacketByteBufs.empty()));
 
 		// send a packet to the server when client joins a server
-		ClientPlayConnectionEvents.JOIN.register(ignored -> ClientPlayNetworking.send(ON_SERVER_PACKET_ID, new PacketByteBuf(Unpooled.buffer())));
+		ClientPlayConnectionEvents.JOIN.register(ignored -> {
+			onServer = false; // reset onServer
+			ClientPlayNetworking.send(ON_SERVER_PACKET_ID, PacketByteBufs.empty())
+		});
 
 		ClientCommandRegistrationCallback.EVENT.register(((dispatcher, registryAccess, environment) -> MCAICommands.register(dispatcher)));
 		ClientTickEvents.START_WORLD_TICK.register(client -> {
