@@ -7,8 +7,10 @@ import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.message.v1.ServerMessageEvents;
+import net.minecraft.network.PacketByteBuf;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.util.Identifier;
 import net.minecraft.text.Text;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,6 +27,7 @@ public class MCAIMod implements ModInitializer {
 	public static final String MODID = "mcai";
 	public static final Logger LOGGER = LoggerFactory.getLogger(MODID);
 	public static JavaCAI characterAI;
+	public static final Identifier ON_SERVER_PACKET_ID = new Identifier(MODID, "is_on_server_question_mark");
 
 	@Override
 	public void onInitialize() {
@@ -34,6 +37,10 @@ public class MCAIMod implements ModInitializer {
 		// Create a C.AI instance
 		characterAI = new JavaCAI(config.General.authorization);
 		Random random = new Random();
+
+		ServerPlayNetworking.registerGlobalReceiver(ON_SERVER_PACKET_ID, (server, player, handler, buf, responseSender) -> {
+			ServerPlayNetworking.send(player, ON_SERVER_PACKET_ID, PacketByteBufs.empty()); // echo
+		});
 
 		ServerMessageEvents.CHAT_MESSAGE.register((message, sender, params) -> {
 			String text = message.getSignedContent();
