@@ -16,8 +16,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(ServerPlayerEntity.class)
 public abstract class PlayerEntityMixin {
-    @Shadow
-    public abstract Text getPlayerListName();
+    @Shadow public abstract Text getPlayerListName();
 
     @Inject(method = "onDeath", at = @At("HEAD"))
     public void onPlayerDeath(DamageSource damageSource, CallbackInfo ci) {

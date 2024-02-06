@@ -5,9 +5,11 @@ import me.shedaniel.autoconfig.AutoConfig;
 import me.shedaniel.autoconfig.serializer.Toml4jConfigSerializer;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ClientTickEvents;
-import net.minecraft.network.PacketByteBuf;
-import net.minecraft.server.MinecraftServer;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.util.Identifier;
 import net.minecraft.text.Text;
 import org.slf4j.Logger;
@@ -15,7 +17,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.text.DecimalFormat;
+import java.time.Duration;
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 import static com.alfred.ai.MCAIMod.characterAI;
@@ -27,9 +31,10 @@ public class MCAIMod implements ClientModInitializer {
 	public static JavaCAI characterAI;
 	public static boolean onServer = false;
 	public static final Identifier ON_SERVER_PACKET_ID = new Identifier(MODID, "is_on_server_question_mark");
+	public static Map<MCAIConfig.CharacterTuple, ZonedDateTime> lastTalkedTo = new HashMap<>();
 
 	@Override
-	public void onInitialize() {
+	public void onInitializeClient() {
 		// Register the config file
 		AutoConfig.register(MCAIConfig.class, Toml4jConfigSerializer::new);
 		MCAIConfig config = MCAIConfig.getInstance();
@@ -42,18 +47,20 @@ public class MCAIMod implements ClientModInitializer {
 		ClientPlayNetworking.registerGlobalReceiver(ON_SERVER_PACKET_ID, (client, handler, buf, responseSender) -> onServer = buf.equals(PacketByteBufs.empty()));
 
 		// send a packet to the server when client joins a server
-		ClientPlayConnectionEvents.JOIN.register(ignored -> {
+		ClientPlayConnectionEvents.JOIN.register((networkHandler, sender, client) -> {
 			onServer = false; // reset onServer
-			ClientPlayNetworking.send(ON_SERVER_PACKET_ID, PacketByteBufs.empty())
+			ClientPlayNetworking.send(ON_SERVER_PACKET_ID, PacketByteBufs.empty());
+			if (onServer)
+				System.out.println("MCAI IS ON SERVER");
 		});
 
-		ClientCommandRegistrationCallback.EVENT.register(((dispatcher, registryAccess, environment) -> MCAICommands.register(dispatcher)));
-		ClientTickEvents.START_WORLD_TICK.register(client -> {
-			if (!config.General.disableRandomTalking && !onServer) {
+		ClientCommandRegistrationCallback.EVENT.register(((dispatcher, registryAccess) -> MCAICommands.register(dispatcher)));
+		ClientTickEvents.START_WORLD_TICK.register(clientWorld -> {
+			if (!config.General.disableRandomTalking && !onServer && !MinecraftClient.getInstance().isPaused()) {
 				Double globalLastTalkedWith = null;
 
 				for (MCAIConfig.CharacterTuple tuple : config.AIs) {
-					double lastTalkedWith = tuple.getLastCommunicatedWith(ZonedDateTime.now());
+					double lastTalkedWith = getLastCommunicatedWith(ZonedDateTime.now(), tuple);
 					if (globalLastTalkedWith == null || lastTalkedWith < globalLastTalkedWith)
 						globalLastTalkedWith = lastTalkedWith;
 				}
@@ -62,7 +69,7 @@ public class MCAIMod implements ClientModInitializer {
 					if (globalLastTalkedWith >= tuple.minimumSecondsBeforeRandomTalking && tuple.randomTalkChance > random.nextFloat()) {
 						sendAIMessage(
 								' ' + config.General.randomTalkMessage.replace("{time}", generalizeNumberToTime(tuple.talkIntervalSpecificity, globalLastTalkedWith)),
-								tuple, config.General.systemName, config.General.format, config.General.replyFormat, server);
+								tuple, config.General.systemName, config.General.format, config.General.replyFormat);
 					}
 				}
 			}
@@ -73,6 +80,26 @@ public class MCAIMod implements ClientModInitializer {
 		double quotient = Math.floor(num / div);
 		double remainder = num % div;
 		return new Tuple(quotient, remainder);
+	}
+
+
+	public static ZonedDateTime getLastCommunicatedWith(MCAIConfig.CharacterTuple tuple) {
+		return lastTalkedTo.computeIfAbsent(tuple, key -> null);
+	}
+
+	public static double getLastCommunicatedWith(ZonedDateTime time, MCAIConfig.CharacterTuple tuple) {
+		if (getLastCommunicatedWith(tuple) == null)
+			return -1; // can't return null because AAAAAAAAA
+		else
+			return Duration.between(getLastCommunicatedWith(tuple).toInstant(), time.toInstant()).toMillis() / 1000.0d;
+	}
+
+	public static void setLastCommunicatedWith(MCAIConfig.CharacterTuple tuple) {
+		setLastCommunicatedWith(ZonedDateTime.now(), tuple);
+	}
+
+	public static void setLastCommunicatedWith(ZonedDateTime time, MCAIConfig.CharacterTuple tuple) {
+		lastTalkedTo.put(tuple, time);
 	}
 
 	public static String generalizeNumberToTime(double value, double number) {
@@ -101,8 +128,8 @@ public class MCAIMod implements ClientModInitializer {
 		if (client.player != null)
 			client.player.sendMessage(Text.literal(message));
 	}
-	public static void sendAIMessage(String text, MCAIConfig.CharacterTuple tuple, String name, String format, String replyFormat, MinecraftServer server) {
-		Runnable task = new AIResponse(tuple, text, name, format, replyFormat, server);
+	public static void sendAIMessage(String text, MCAIConfig.CharacterTuple tuple, String name, String format, String replyFormat) {
+		Runnable task = new AIResponse(tuple, text, name, format, replyFormat);
 		Thread thread = new Thread(null, task, "HTTP thread");
 		thread.start();
 	}
@@ -114,15 +141,13 @@ class AIResponse implements Runnable {
 	public final String playerName;
 	public final String format;
 	public final String replyFormat;
-	public final MinecraftServer server;
 
-	public AIResponse(MCAIConfig.CharacterTuple tuple, String text, String playerName, String format, String replyFormat, MinecraftServer server) {
+	public AIResponse(MCAIConfig.CharacterTuple tuple, String text, String playerName, String format, String replyFormat) {
 		this.tuple = tuple;
 		this.text = text;
 		this.playerName = playerName == null ? "Anonymous" : playerName;
 		this.format = format;
 		this.replyFormat = replyFormat;
-		this.server = server;
 	}
 
 	@Override
@@ -145,7 +170,7 @@ class AIResponse implements Runnable {
 			sendMessage(replyFormat
 					.replace("{char}", reply.get("src_char").get("participant").get("name").asText())
 					.replace("{message}", reply.get("replies").get(0).get("text").asText())
-					.replace("\n\n", "\n"), server);
+					.replace("\n\n", "\n"));
 		} catch (IOException ignored) { }
 	}
 }

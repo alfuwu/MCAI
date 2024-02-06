@@ -4,15 +4,13 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
-import net.minecraft.server.command.CommandManager;
-import net.minecraft.server.command.ServerCommandSource;
-import net.minecraft.server.network.ServerPlayerEntity;
+import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
+import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.minecraft.text.Text;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -20,62 +18,62 @@ import java.util.regex.Pattern;
 import static com.alfred.ai.MCAIMod.*;
 
 public class MCAICommands {
-    public static void register(CommandDispatcher dispatcher) {
+    public static void register(CommandDispatcher<FabricClientCommandSource> dispatcher) {
         if (!onServer) { // server has its own AIs
-            dispatcher.register(CommandManager.literal("ai")
-                            .then(CommandManager.literal("register") // command to add an AI
-                                    .then(CommandManager.argument("character_id", StringArgumentType.word())
+            dispatcher.register(ClientCommandManager.literal("ai")
+                    .then(ClientCommandManager.literal("register") // command to add an AI
+                            .then(ClientCommandManager.argument("character_id", StringArgumentType.word())
+                                    .executes(context -> registerCharacter(context.getSource(),
+                                            StringArgumentType.getString(context, "character_id"), ""))
+                                    .then(ClientCommandManager.argument("aliases", StringArgumentType.greedyString())
                                             .executes(context -> registerCharacter(context.getSource(),
-                                                    StringArgumentType.getString(context, "character_id"), ""))
-                                            .then(CommandManager.argument("aliases", StringArgumentType.greedyString())
-                                                    .executes(context -> registerCharacter(context.getSource(),
-                                                            StringArgumentType.getString(context, "character_id"),
-                                                            StringArgumentType.getString(context, "aliases"))))))
-                            .then(CommandManager.literal("unregister") // command to remove an AI completely
-                                    .then(CommandManager.argument("character_id", StringArgumentType.word())
-                                            .executes(context -> unregisterCharacter(context.getSource(),
-                                                    StringArgumentType.getString(context, "character_id")))))
-                            .then(CommandManager.literal("talk") // command to talk to an AI (alternative to pinging)
-                                    .then(CommandManager.argument("name", StringArgumentType.word())
-                                            .then(CommandManager.argument("text", StringArgumentType.greedyString())
-                                                    .executes(context -> talk(context.getSource(),
-                                                            StringArgumentType.getString(context, "name"),
-                                                            StringArgumentType.getString(context, "text"))))))
-                            .then(CommandManager.literal("context") // retrieves the last few messages
-                                    .then(CommandManager.argument("name", StringArgumentType.word())
+                                                    StringArgumentType.getString(context, "character_id"),
+                                                    StringArgumentType.getString(context, "aliases"))))))
+                    .then(ClientCommandManager.literal("unregister") // command to remove an AI completely
+                            .then(ClientCommandManager.argument("character_id", StringArgumentType.word())
+                                    .executes(context -> unregisterCharacter(context.getSource(),
+                                            StringArgumentType.getString(context, "character_id")))))
+                    .then(ClientCommandManager.literal("talk") // command to talk to an AI (alternative to pinging)
+                            .then(ClientCommandManager.argument("name", StringArgumentType.word())
+                                    .then(ClientCommandManager.argument("text", StringArgumentType.greedyString())
+                                            .executes(context -> talk(context.getSource(),
+                                                    StringArgumentType.getString(context, "name"),
+                                                    StringArgumentType.getString(context, "text"))))))
+                    .then(ClientCommandManager.literal("context") // retrieves the last few messages
+                            .then(ClientCommandManager.argument("name", StringArgumentType.word())
+                                    .executes(context -> getContext(context.getSource(),
+                                            StringArgumentType.getString(context, "name"), false))
+                                    .then(ClientCommandManager.argument("broadcast", BoolArgumentType.bool())
                                             .executes(context -> getContext(context.getSource(),
-                                                    StringArgumentType.getString(context, "name"), false))
-                                            .then(CommandManager.argument("broadcast", BoolArgumentType.bool())
-                                                    .executes(context -> getContext(context.getSource(),
-                                                            StringArgumentType.getString(context, "name"),
-                                                            BoolArgumentType.getBool(context, "broadcast"))))))
-                            .then(CommandManager.literal("reset") // resets the chat and sends the greeting
-                                    .then(CommandManager.argument("name", StringArgumentType.word())
-                                            .executes(context -> newChat(context.getSource(),
-                                                    StringArgumentType.getString(context, "name")))))
-                            .then(CommandManager.literal("enable") // enables the AI (allows it to respond to pings)
-                                    .then(CommandManager.argument("name", StringArgumentType.word())
-                                            .executes(context -> toggleAI(context.getSource(),
-                                                    StringArgumentType.getString(context, "name"), false))))
-                            .then(CommandManager.literal("disable") // disables the AI (prevents it from responding to pings)
-                                    .then(CommandManager.argument("name", StringArgumentType.word())
-                                            .executes(context -> toggleAI(context.getSource(),
-                                                    StringArgumentType.getString(context, "name"), true))))
-                            .then(CommandManager.literal("authorize") // enables the AI (allows it to respond to pings)
-                                    .then(CommandManager.argument("token", StringArgumentType.word())
-                                            .executes(context -> authorize(context.getSource(),
-                                                    StringArgumentType.getString(context, "token")))))
-                            .then(CommandManager.literal("reload") // reloads the config
-                                    .executes(context -> {
-                                        MCAIConfig.load();
-                                        context.getSource().sendFeedback(() -> Text.translatable("mcai.messages.config_reload_success"),true);
-                                        return 1;}))
-                            .then(CommandManager.literal("list") // lists available AIs
-                                    .executes(context -> list(context.getSource()))));
+                                                    StringArgumentType.getString(context, "name"),
+                                                    BoolArgumentType.getBool(context, "broadcast"))))))
+                    .then(ClientCommandManager.literal("reset") // resets the chat and sends the greeting
+                            .then(ClientCommandManager.argument("name", StringArgumentType.word())
+                                    .executes(context -> newChat(context.getSource(),
+                                            StringArgumentType.getString(context, "name")))))
+                    .then(ClientCommandManager.literal("enable") // enables the AI (allows it to respond to pings)
+                            .then(ClientCommandManager.argument("name", StringArgumentType.word())
+                                    .executes(context -> toggleAI(context.getSource(),
+                                            StringArgumentType.getString(context, "name"), false))))
+                    .then(ClientCommandManager.literal("disable") // disables the AI (prevents it from responding to pings)
+                            .then(ClientCommandManager.argument("name", StringArgumentType.word())
+                                    .executes(context -> toggleAI(context.getSource(),
+                                            StringArgumentType.getString(context, "name"), true))))
+                    .then(ClientCommandManager.literal("authorize") // enables the AI (allows it to respond to pings)
+                            .then(ClientCommandManager.argument("token", StringArgumentType.word())
+                                    .executes(context -> authorize(context.getSource(),
+                                            StringArgumentType.getString(context, "token")))))
+                    .then(ClientCommandManager.literal("reload") // reloads the config
+                            .executes(context -> {
+                                MCAIConfig.load();
+                                context.getSource().sendFeedback(Text.translatable("mcai.messages.config_reload_success"));
+                                return 1;}))
+                    .then(ClientCommandManager.literal("list") // lists available AIs
+                            .executes(context -> list(context.getSource()))));
         }
     }
 
-    private static int registerCharacter(ServerCommandSource source, String characterID, String aliases) {
+    private static int registerCharacter(FabricClientCommandSource source, String characterID, String aliases) {
         if (MCAIConfig.getInstance().AIs.stream().anyMatch(tuple -> tuple.ID.equals(characterID))) { // character ID is already present as a character
             source.sendError(Text.translatable("mcai.errors.character_id_exists"));
         } else {
@@ -86,7 +84,7 @@ public class MCAICommands {
                 MCAIConfig.save();
                 MCAIConfig.load();
                 //source.sendMessage(Text.translatable("mcai.messages.character_register_success", name, name));
-                source.sendFeedback(() -> Text.translatable("mcai.messages.character_register_success", name, name), true);
+                source.sendFeedback(Text.translatable("mcai.messages.character_register_success", name, name));
                 return 1; // Command successful
             } catch (IOException e) {
                 e.printStackTrace();
@@ -96,13 +94,13 @@ public class MCAICommands {
         return 0; // Command unsuccessful
     }
 
-    private static int unregisterCharacter(ServerCommandSource source, String characterID) {
+    private static int unregisterCharacter(FabricClientCommandSource source, String characterID) {
         for (MCAIConfig.CharacterTuple tuple : MCAIConfig.getInstance().AIs) {
             if (tuple.ID.equals(characterID)) {
                 MCAIConfig.getInstance().AIs.remove(tuple);
                 MCAIConfig.save();
                 //source.sendMessage(Text.translatable("mcai.messages.character_unregister_success"));
-                source.sendFeedback(() -> Text.translatable("mcai.messages.character_unregister_success", tuple.name), true);
+                source.sendFeedback(Text.translatable("mcai.messages.character_unregister_success", tuple.name));
                 return 1;
             }
         }
@@ -110,7 +108,7 @@ public class MCAICommands {
         return 0;
     }
 
-    private static int talk(ServerCommandSource source, String name, String text) {
+    private static int talk(FabricClientCommandSource source, String name, String text) {
         boolean foundAnAI = false;
         for (MCAIConfig.CharacterTuple tuple : MCAIConfig.getInstance().AIs) {
             if (tuple.name.equalsIgnoreCase(name) || Arrays.stream(tuple.aliases).anyMatch(alias -> alias.equalsIgnoreCase(name))) {
@@ -118,10 +116,9 @@ public class MCAICommands {
                 if (!tuple.disabled) {
                     Runnable task = new AIPlayerListResponse(
                             tuple, text,
-                            source.getName(),
+                            source.getEntity().getName().getString(),
                             MCAIConfig.getInstance().General.format,
-                            MCAIConfig.getInstance().General.replyFormat,
-                            source.getServer().getPlayerManager().getPlayerList());
+                            MCAIConfig.getInstance().General.replyFormat);
                     Thread thread = new Thread(null, task, "HTTP thread");
                     thread.start();
                     return 1; // Command successful
@@ -163,41 +160,44 @@ public class MCAICommands {
         }
     }
 
-    private static int getContext(ServerCommandSource source, String name, boolean broadcast) {
+    private static int getContext(FabricClientCommandSource source, String name, boolean broadcast) {
         for (MCAIConfig.CharacterTuple tuple : MCAIConfig.getInstance().AIs) {
             if (tuple.name.equalsIgnoreCase(name) || Arrays.stream(tuple.aliases).anyMatch(alias -> alias.equalsIgnoreCase(name))) {
                 if (tuple.historyID.strip().equals("")) {
                     source.sendError(Text.translatable("mcai.errors.no_history", tuple.name));
                 } else {
-                    try {
-                        JsonNode chat = characterAI.chat.getHistory(tuple.historyID);
-                        for (int i = 0; i < 5; i++) {
-                            int messageIndex = chat.get("messages").size() + i - 5;
-                            if (messageIndex >= 0) {
-                                String text = chat.get("messages").get(messageIndex).get("text").asText();
-                                Tuple<String> reversedFormat = reverseFormat(MCAIConfig.getInstance().General.format, text);
-                                text = MCAIConfig.getInstance().General.replyFormat
-                                        .replace("{char}", chat.get("messages").get(messageIndex).get("src__is_human").asBoolean(false) ?
-                                                reversedFormat.get(0) :
-                                                chat.get("messages").get(messageIndex).get("src_char").get("participant").get("name").asText())
-                                        .replace("{message}", reversedFormat.get(1).equals("") ?
-                                                text :
-                                                reversedFormat.get(1).charAt(0) == ' ' ?
-                                                        reversedFormat.get(1).substring(1) : reversedFormat.get(1));
-                                if (broadcast) {
-                                    sendGlobalMessage(text, source.getServer());
+                    Thread thread = new Thread(null, () -> {
+                        try {
+                            JsonNode chat = characterAI.chat.getHistory(tuple.historyID);
+                            for (int i = 0; i < 5; i++) {
+                                int messageIndex = chat.get("messages").size() + i - 5;
+                                if (messageIndex >= 0) {
+                                    String text = chat.get("messages").get(messageIndex).get("text").asText();
+                                    Tuple<String> reversedFormat = reverseFormat(MCAIConfig.getInstance().General.format, text);
+                                    text = MCAIConfig.getInstance().General.replyFormat
+                                            .replace("{char}", chat.get("messages").get(messageIndex).get("src__is_human").asBoolean(false) ?
+                                                    reversedFormat.get(0) :
+                                                    chat.get("messages").get(messageIndex).get("src_char").get("participant").get("name").asText())
+                                            .replace("{message}", reversedFormat.get(1).equals("") ?
+                                                    text :
+                                                    reversedFormat.get(1).charAt(0) == ' ' ?
+                                                            reversedFormat.get(1).substring(1) : reversedFormat.get(1));
+                                    if (broadcast) {
+                                        sendMessage(text);
+                                    } else {
+                                        source.sendFeedback(Text.literal(text));
+                                    }
                                 } else {
-                                    source.sendMessage(Text.literal(text));
+                                    break;
                                 }
-                            } else {
-                                break;
                             }
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                            throw new RuntimeException(e);
                         }
-                        return 1;
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                        throw new RuntimeException(e);
-                    }
+                    }, "HTTP Thread");
+                    thread.start();
+                    return 1;
                 }
             }
         }
@@ -205,32 +205,34 @@ public class MCAICommands {
         return 0;
     }
 
-    private static int newChat(ServerCommandSource source, String name) {
+    private static int newChat(FabricClientCommandSource source, String name) {
         boolean foundAnAI = false;
         for (MCAIConfig.CharacterTuple tuple : MCAIConfig.getInstance().AIs) {
             if (tuple.name.equalsIgnoreCase(name) || Arrays.stream(tuple.aliases).anyMatch(alias -> alias.equalsIgnoreCase(name))) {
                 foundAnAI = true;
                 if (!tuple.disabled) {
-                    try {
-                        JsonNode chat = characterAI.chat.newChat(tuple.ID);
-                        tuple.historyID = chat.get("external_id").asText();
-                        MCAIConfig.save();
-                        MCAIConfig.load();
-                        sendGlobalMessage(chat.get("messages").get(0).get("text").asText(), source.getServer());
-                        return 1; // Command successful
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                        throw new RuntimeException(e);
-                    }
+                    Thread thread = new Thread(null, () -> {
+                        try {
+                            JsonNode chat = characterAI.chat.newChat(tuple.ID);
+                            tuple.historyID = chat.get("external_id").asText();
+                            MCAIConfig.save();
+                            MCAIConfig.load();
+                            sendMessage(chat.get("messages").get(0).get("text").asText());
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                            throw new RuntimeException(e);
+                        }
+                    }, "HTTP Thread");
+                    thread.start();
+                    return 1;
                 }
-
             }
         }
         source.sendError(Text.translatable(!foundAnAI ? "mcai.errors.ai_not_found" : "mcai.errors.no_suitable_ai_found", name));
         return 0;
     }
 
-    private static int toggleAI(ServerCommandSource source, String name, boolean disable) {
+    private static int toggleAI(FabricClientCommandSource source, String name, boolean disable) {
         boolean foundAnAI = false;
         for (MCAIConfig.CharacterTuple tuple : MCAIConfig.getInstance().AIs) {
             if (tuple.name.equalsIgnoreCase(name) || Arrays.stream(tuple.aliases).anyMatch(alias -> alias.equalsIgnoreCase(name))) {
@@ -240,7 +242,7 @@ public class MCAICommands {
                     MCAIConfig.save();
                     MCAIConfig.load();
                     //source.sendMessage(Text.translatable("mcai.messages.enabled_ai", tuple.name));
-                    source.sendFeedback(() -> Text.translatable(String.format("mcai.messages.%sabled_ai", disable ? "dis" : "en"), tuple.name), true);
+                    source.sendFeedback(Text.translatable(String.format("mcai.messages.%sabled_ai", disable ? "dis" : "en"), tuple.name));
                     return 1;
                 }
             }
@@ -249,16 +251,16 @@ public class MCAICommands {
         return 0;
     }
 
-    private static int authorize(ServerCommandSource source, String token) {
+    private static int authorize(FabricClientCommandSource source, String token) {
         MCAIConfig.getInstance().General.authorization = token;
         MCAIConfig.save();
         MCAIConfig.load();
         //source.sendMessage(Text.translatable("mcai.messages.authorized", token));
-        source.sendFeedback(() -> Text.translatable("mcai.messages.authorized", token), true);
+        source.sendFeedback(Text.translatable("mcai.messages.authorized", token));
         return 1;
     }
 
-    private static int list(ServerCommandSource source) {
+    private static int list(FabricClientCommandSource source) {
         final String[] text = {""};
         MCAIConfig.getInstance().AIs.forEach(tuple ->
                 text[0] += String.format("\n - %s %s",
@@ -267,7 +269,7 @@ public class MCAICommands {
                                 "disabled" : "enabled")).getString()) +
                         (tuple.aliases.length > 0 ? ' ' + Arrays.toString(tuple.aliases) : ""));
         //source.sendMessage(Text.translatable("mcai.messages.ai_list", text[0]));
-        source.sendFeedback(() -> Text.translatable("mcai.messages.ai_list", text[0]), false);
+        source.sendFeedback(Text.translatable("mcai.messages.ai_list", text[0]));
         return 1;
     }
 }
@@ -278,15 +280,13 @@ class AIPlayerListResponse implements Runnable {
     public final String playerName;
     public final String format;
     public final String replyFormat;
-    public final List<ServerPlayerEntity> players;
 
-    public AIPlayerListResponse(MCAIConfig.CharacterTuple tuple, String text, String playerName, String format, String replyFormat, List<ServerPlayerEntity> players) {
+    public AIPlayerListResponse(MCAIConfig.CharacterTuple tuple, String text, String playerName, String format, String replyFormat) {
         this.tuple = tuple;
         this.text = text;
         this.playerName = playerName == null ? "Anonymous" : playerName;
         this.format = format;
         this.replyFormat = replyFormat;
-        this.players = players;
     }
 
     @Override
@@ -308,7 +308,7 @@ class AIPlayerListResponse implements Runnable {
                     tgt);
             sendMessage(replyFormat
                     .replace("{char}", reply.get("src_char").get("participant").get("name").asText())
-                    .replace("{message}", reply.get("replies").get(0).get("text").asText()), players);
+                    .replace("{message}", reply.get("replies").get(0).get("text").asText()));
         } catch (IOException ignored) { }
     }
 }

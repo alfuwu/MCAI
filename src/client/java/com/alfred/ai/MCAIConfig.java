@@ -72,30 +72,7 @@ public class MCAIConfig implements ConfigData {
         public float randomTalkChance;
         public double minimumSecondsBeforeRandomTalking;
         public double talkIntervalSpecificity;
-        private String lastCommunicatedWith;
         public boolean disabled;
-
-        public ZonedDateTime getLastCommunicatedWith() {
-            if (lastCommunicatedWith == null)
-                return null;
-            else
-                return ZonedDateTime.parse(lastCommunicatedWith);
-        }
-
-        public double getLastCommunicatedWith(ZonedDateTime time) {
-            if (lastCommunicatedWith == null)
-                return -1; // can't return null because AAAAAAAAA
-            else
-                return Duration.between(getLastCommunicatedWith().toInstant(), time.toInstant()).toMillis() / 1000.0d;
-        }
-
-        public void setLastCommunicatedWith() {
-            setLastCommunicatedWith(ZonedDateTime.now());
-        }
-
-        public void setLastCommunicatedWith(ZonedDateTime time) {
-            lastCommunicatedWith = time.format(DateTimeFormatter.ISO_DATE_TIME);
-        }
 
         public CharacterTuple(String name, String ID, String historyID, String[] aliases) {
             this.name = name;
@@ -109,7 +86,6 @@ public class MCAIConfig implements ConfigData {
             this.randomTalkChance = 0.002f; // per tick
             this.minimumSecondsBeforeRandomTalking = 100;
             this.talkIntervalSpecificity = 0.2; // default specificity for talk interval (how specific the data is)
-            this.lastCommunicatedWith = null;
             this.disabled = false;
         }
     }
