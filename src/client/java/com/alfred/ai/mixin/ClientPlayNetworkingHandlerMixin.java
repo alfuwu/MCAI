@@ -9,7 +9,6 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-
 // first iteration
 //  attempt to intercept messages sent from the client to the rest of the server and disable them if they were directed at an AI
 @Mixin(ClientPlayNetworkHandler.class)
@@ -21,7 +20,7 @@ public class ClientPlayNetworkHandlerMixin {
             if (true && !onServer) {
                 ci.cancel();
                 System.out.println("Outgoing chat message intercepted and canceled!");
-                String text = message.getSignedContent();
+                String text = packet.getSignedContent();
 				for (MCAIConfig.CharacterTuple tuple : config.AIs) {
 					if (tuple.disabled) // ignore disabled AIs
 						continue;
