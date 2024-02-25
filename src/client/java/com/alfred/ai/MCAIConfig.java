@@ -11,17 +11,15 @@ import java.util.List;
 import java.util.Map;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.time.ZoneOffset;
 import java.time.Duration;
 
 @Config(name = "mcai")
 public class MCAIConfig implements ConfigData {
-    public General General = new General(
-            "{user}:{message}",
-            "<{char}> {message}",
-            "",
-            3);
-    public List<CharacterTuple> AIs = Lists.newArrayList();
+    @ConfigEntry.Gui.TransitiveObject
+    @ConfigEntry.Category("General")
+    public General general = new General();
+    @ConfigEntry.Category("AIs")
+    public List<CharacterTuple> ais = Lists.newArrayList();
 
     public static MCAIConfig getInstance() {
         return AutoConfig.getConfigHolder(MCAIConfig.class).getConfig();
@@ -33,60 +31,45 @@ public class MCAIConfig implements ConfigData {
         AutoConfig.getConfigHolder(MCAIConfig.class).load();
     }
 
-    public static class General {
-        public String format;
-        public String replyFormat;
-        @ConfigEntry.Category("serverOnly") // im not even sure this does anythin but idfc so im leavin it here
-        public String authorization;
-        public int adminPermissionLevel;
-        public boolean disableRandomResponses;
-        public boolean disableRandomTalking;
-        public boolean disableAdvancementResponses;
-        public boolean disableRecipeResponses;
-        public String randomTalkMessage;
-        public String systemName;
+    public static class General implements ConfigData {
+        public String format = "{user}:{message}";
+        public String replyFormat = "<{char}> {message}";
+        public String authorization = "";
+        public boolean disableRandomResponses = false;
+        public boolean disableRandomTalking = false;
+        public boolean disableAdvancementResponses = false;
+        public boolean disableDeathMessageResponses = false;
+        public boolean disableRecipeResponses = true;
+        public boolean ignoreOnServer = false;
+        public String randomTalkMessage = "Nobody has talked for {time}.";
+        public String systemName = "SYSTEM";
 
-        public General(String format, String replyFormat, String authorization, int adminPermissionLevel) {
-            this.format = format;
-            this.replyFormat = replyFormat;
-            this.authorization = authorization;
-            this.adminPermissionLevel = adminPermissionLevel;
-            this.disableRandomResponses = false;
-            this.disableRandomTalking = false;
-            this.disableAdvancementResponses = false;
-            this.disableRecipeResponses = true;
-            this.randomTalkMessage = "Nobody has talked for {time}.";
-            this.systemName = "SYSTEM";
-        }
+        public General() { }
     }
 
-    public static class CharacterTuple {
+    public static class CharacterTuple implements ConfigData {
         public String name;
-        public String ID;
-        public String historyID;
+        public String id;
+        public String historyId;
         public String[] aliases;
-        public float advancementResponseChance;
-        public Map<String, Float> advancementResponseOverrideChances;
-        public float deathResponseChance;
-        public float randomResponseChance;
-        public float randomTalkChance;
-        public double minimumSecondsBeforeRandomTalking;
-        public double talkIntervalSpecificity;
-        public boolean disabled;
+        public float advancementResponseChance = 0.5f;
+        public Map<String, Float> advancementResponseOverrideChances = new HashMap<>();
+        public float deathMessageResponseChance = 0.5f;
+        public float randomResponseChance = 0.069f;
+        public float randomTalkChance = 0.002f;
+        public double minimumSecondsBeforeRandomTalking = 100;
+        public double talkIntervalSpecificity = 0.2;
+        public boolean disabled = false;
 
-        public CharacterTuple(String name, String ID, String historyID, String[] aliases) {
+        public CharacterTuple() {
+            this("", "", "", new String[0]);
+        }
+
+        public CharacterTuple(String name, String id, String historyId, String[] aliases) {
             this.name = name;
-            this.ID = ID;
-            this.historyID = historyID;
+            this.id = id;
+            this.historyId = historyId;
             this.aliases = aliases;
-            this.advancementResponseChance = 0.5f; // default chance to respond to advancements
-            this.advancementResponseOverrideChances = new HashMap<>();
-            this.deathResponseChance = 0.5f; // default chance to respond to deaths
-            this.randomResponseChance = 0.069f; // default chance to respond to random chat messages
-            this.randomTalkChance = 0.002f; // per tick
-            this.minimumSecondsBeforeRandomTalking = 100;
-            this.talkIntervalSpecificity = 0.2; // default specificity for talk interval (how specific the data is)
-            this.disabled = false;
         }
     }
 }

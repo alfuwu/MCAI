@@ -16,7 +16,6 @@ import net.minecraft.advancement.AdvancementProgress;
 
 @Mixin(PlayerAdvancementTracker.class)
 public abstract class AdvancementMixin {
-    @Shadow private ServerPlayerEntity owner; // allows getting player data
     @Shadow public abstract AdvancementProgress getProgress(AdvancementEntry advancement);
 
     @Inject(method = "grantCriterion", at = @At("HEAD"))

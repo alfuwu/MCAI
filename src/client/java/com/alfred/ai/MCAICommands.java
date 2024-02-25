@@ -10,7 +10,6 @@ import net.minecraft.text.Text;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -74,16 +73,14 @@ public class MCAICommands {
     }
 
     private static int registerCharacter(FabricClientCommandSource source, String characterID, String aliases) {
-        if (MCAIConfig.getInstance().AIs.stream().anyMatch(tuple -> tuple.ID.equals(characterID))) { // character ID is already present as a character
+        if (MCAIMod.CONFIG.ais.stream().anyMatch(tuple -> tuple.id.equals(characterID))) { // character ID is already present as a character
             source.sendError(Text.translatable("mcai.errors.character_id_exists"));
         } else {
             try {
                 String[] aliasList = aliases.strip().equals("") ? new String[] {} : aliases.strip().split("\\s+");
-                String name = MCAIMod.characterAI.character.getInfo(characterID).get("character").get("name").asText("Unknown");
-                MCAIConfig.getInstance().AIs.add(new MCAIConfig.CharacterTuple(name, characterID, "", aliasList));
+                String name = MCAIMod.CHARACTER_AI.character.getInfo(characterID).get("character").get("name").asText("Unknown");
+                MCAIMod.CONFIG.ais.add(new MCAIConfig.CharacterTuple(name, characterID, "", aliasList));
                 MCAIConfig.save();
-                MCAIConfig.load();
-                //source.sendMessage(Text.translatable("mcai.messages.character_register_success", name, name));
                 source.sendFeedback(Text.translatable("mcai.messages.character_register_success", name, name));
                 return 1; // Command successful
             } catch (IOException e) {
@@ -95,11 +92,10 @@ public class MCAICommands {
     }
 
     private static int unregisterCharacter(FabricClientCommandSource source, String characterID) {
-        for (MCAIConfig.CharacterTuple tuple : MCAIConfig.getInstance().AIs) {
-            if (tuple.ID.equals(characterID)) {
-                MCAIConfig.getInstance().AIs.remove(tuple);
+        for (MCAIConfig.CharacterTuple tuple : MCAIMod.CONFIG.ais) {
+            if (tuple.id.equals(characterID)) {
+                MCAIMod.CONFIG.ais.remove(tuple);
                 MCAIConfig.save();
-                //source.sendMessage(Text.translatable("mcai.messages.character_unregister_success"));
                 source.sendFeedback(Text.translatable("mcai.messages.character_unregister_success", tuple.name));
                 return 1;
             }
@@ -110,16 +106,30 @@ public class MCAICommands {
 
     private static int talk(FabricClientCommandSource source, String name, String text) {
         boolean foundAnAI = false;
-        for (MCAIConfig.CharacterTuple tuple : MCAIConfig.getInstance().AIs) {
+        for (MCAIConfig.CharacterTuple tuple : MCAIMod.CONFIG.ais) {
             if (tuple.name.equalsIgnoreCase(name) || Arrays.stream(tuple.aliases).anyMatch(alias -> alias.equalsIgnoreCase(name))) {
                 foundAnAI = true;
                 if (!tuple.disabled) {
-                    Runnable task = new AIPlayerListResponse(
-                            tuple, text,
-                            source.getEntity().getName().getString(),
-                            MCAIConfig.getInstance().General.format,
-                            MCAIConfig.getInstance().General.replyFormat);
-                    Thread thread = new Thread(null, task, "HTTP thread");
+                    Thread thread = new Thread(null, () -> {
+                        try {
+                            JsonNode chat = (tuple.historyId == null || tuple.historyId.strip().equals("")) ? MCAIMod.CHARACTER_AI.chat.newChat(tuple.id) : MCAIMod.CHARACTER_AI.chat.getChat(tuple.id);
+                            String historyID = chat.get("external_id").asText();
+                            if (!tuple.historyId.equals(historyID)) {
+                                tuple.historyId = historyID;
+                                MCAIConfig.save();
+                            }
+                            String tgt = MCAIMod.CHARACTER_AI.chat.getTgt(tuple.id);
+                            JsonNode reply = MCAIMod.CHARACTER_AI.chat.sendMessage(
+                                    historyID,
+                                    MCAIMod.CONFIG.general.format
+                                            .replace("{user}", name)
+                                            .replace("{message}", text),
+                                    tgt);
+                            sendMessage(MCAIMod.CONFIG.general.replyFormat
+                                    .replace("{char}", reply.get("src_char").get("participant").get("name").asText())
+                                    .replace("{message}", reply.get("replies").get(0).get("text").asText()));
+                        } catch (IOException ignored) { }
+                    }, "HTTP thread");
                     thread.start();
                     return 1; // Command successful
                 }
@@ -132,8 +142,7 @@ public class MCAICommands {
     public static String sub(String input, String pattern, Function<String, String> replacementFunction) {
         Pattern regexPattern = Pattern.compile(pattern);
         Matcher matcher = regexPattern.matcher(input);
-
-        StringBuffer result = new StringBuffer();
+        StringBuilder result = new StringBuilder();
 
         while (matcher.find()) {
             String match = matcher.group();
@@ -142,7 +151,6 @@ public class MCAICommands {
         }
 
         matcher.appendTail(result);
-
         return result.toString();
     }
 
@@ -153,28 +161,27 @@ public class MCAICommands {
         Pattern pattern = Pattern.compile(regex);
         Matcher matcher = pattern.matcher(formattedString);
 
-        if (matcher.find()) {
-            return new Tuple(matcher.group("user"), matcher.group("message"));
-        } else {
-            return new Tuple("", "");
-        }
+        if (matcher.find())
+            return new Tuple<>(matcher.group("user"), matcher.group("message"));
+        else
+            return new Tuple<>("", "");
     }
 
     private static int getContext(FabricClientCommandSource source, String name, boolean broadcast) {
-        for (MCAIConfig.CharacterTuple tuple : MCAIConfig.getInstance().AIs) {
+        for (MCAIConfig.CharacterTuple tuple : MCAIMod.CONFIG.ais) {
             if (tuple.name.equalsIgnoreCase(name) || Arrays.stream(tuple.aliases).anyMatch(alias -> alias.equalsIgnoreCase(name))) {
-                if (tuple.historyID.strip().equals("")) {
+                if (tuple.historyId.strip().equals("")) {
                     source.sendError(Text.translatable("mcai.errors.no_history", tuple.name));
                 } else {
                     Thread thread = new Thread(null, () -> {
                         try {
-                            JsonNode chat = characterAI.chat.getHistory(tuple.historyID);
+                            JsonNode chat = CHARACTER_AI.chat.getHistory(tuple.historyId);
                             for (int i = 0; i < 5; i++) {
                                 int messageIndex = chat.get("messages").size() + i - 5;
                                 if (messageIndex >= 0) {
                                     String text = chat.get("messages").get(messageIndex).get("text").asText();
-                                    Tuple<String> reversedFormat = reverseFormat(MCAIConfig.getInstance().General.format, text);
-                                    text = MCAIConfig.getInstance().General.replyFormat
+                                    Tuple<String> reversedFormat = reverseFormat(MCAIMod.CONFIG.general.format, text);
+                                    text = MCAIMod.CONFIG.general.replyFormat
                                             .replace("{char}", chat.get("messages").get(messageIndex).get("src__is_human").asBoolean(false) ?
                                                     reversedFormat.get(0) :
                                                     chat.get("messages").get(messageIndex).get("src_char").get("participant").get("name").asText())
@@ -207,16 +214,15 @@ public class MCAICommands {
 
     private static int newChat(FabricClientCommandSource source, String name) {
         boolean foundAnAI = false;
-        for (MCAIConfig.CharacterTuple tuple : MCAIConfig.getInstance().AIs) {
+        for (MCAIConfig.CharacterTuple tuple : MCAIMod.CONFIG.ais) {
             if (tuple.name.equalsIgnoreCase(name) || Arrays.stream(tuple.aliases).anyMatch(alias -> alias.equalsIgnoreCase(name))) {
                 foundAnAI = true;
                 if (!tuple.disabled) {
                     Thread thread = new Thread(null, () -> {
                         try {
-                            JsonNode chat = characterAI.chat.newChat(tuple.ID);
-                            tuple.historyID = chat.get("external_id").asText();
+                            JsonNode chat = MCAIMod.CHARACTER_AI.chat.newChat(tuple.id);
+                            tuple.historyId = chat.get("external_id").asText();
                             MCAIConfig.save();
-                            MCAIConfig.load();
                             sendMessage(chat.get("messages").get(0).get("text").asText());
                         } catch (IOException e) {
                             e.printStackTrace();
@@ -234,14 +240,12 @@ public class MCAICommands {
 
     private static int toggleAI(FabricClientCommandSource source, String name, boolean disable) {
         boolean foundAnAI = false;
-        for (MCAIConfig.CharacterTuple tuple : MCAIConfig.getInstance().AIs) {
+        for (MCAIConfig.CharacterTuple tuple : MCAIMod.CONFIG.ais) {
             if (tuple.name.equalsIgnoreCase(name) || Arrays.stream(tuple.aliases).anyMatch(alias -> alias.equalsIgnoreCase(name))) {
                 foundAnAI = true;
                 if (tuple.disabled == !disable) {
                     tuple.disabled = disable;
                     MCAIConfig.save();
-                    MCAIConfig.load();
-                    //source.sendMessage(Text.translatable("mcai.messages.enabled_ai", tuple.name));
                     source.sendFeedback(Text.translatable(String.format("mcai.messages.%sabled_ai", disable ? "dis" : "en"), tuple.name));
                     return 1;
                 }
@@ -252,63 +256,21 @@ public class MCAICommands {
     }
 
     private static int authorize(FabricClientCommandSource source, String token) {
-        MCAIConfig.getInstance().General.authorization = token;
+        MCAIMod.CONFIG.general.authorization = token;
         MCAIConfig.save();
-        MCAIConfig.load();
-        //source.sendMessage(Text.translatable("mcai.messages.authorized", token));
         source.sendFeedback(Text.translatable("mcai.messages.authorized", token));
         return 1;
     }
 
     private static int list(FabricClientCommandSource source) {
         final String[] text = {""};
-        MCAIConfig.getInstance().AIs.forEach(tuple ->
+        MCAIMod.CONFIG.ais.forEach(tuple ->
                 text[0] += String.format("\n - %s %s",
                         tuple.name,
                         Text.translatable(String.format("mcai.messages.%s", tuple.disabled ?
                                 "disabled" : "enabled")).getString()) +
                         (tuple.aliases.length > 0 ? ' ' + Arrays.toString(tuple.aliases) : ""));
-        //source.sendMessage(Text.translatable("mcai.messages.ai_list", text[0]));
         source.sendFeedback(Text.translatable("mcai.messages.ai_list", text[0]));
         return 1;
-    }
-}
-
-class AIPlayerListResponse implements Runnable {
-    private final MCAIConfig.CharacterTuple tuple;
-    public final String text;
-    public final String playerName;
-    public final String format;
-    public final String replyFormat;
-
-    public AIPlayerListResponse(MCAIConfig.CharacterTuple tuple, String text, String playerName, String format, String replyFormat) {
-        this.tuple = tuple;
-        this.text = text;
-        this.playerName = playerName == null ? "Anonymous" : playerName;
-        this.format = format;
-        this.replyFormat = replyFormat;
-    }
-
-    @Override
-    public void run() {
-        try {
-            JsonNode chat = (tuple.historyID == null || tuple.historyID.strip().equals("")) ? characterAI.chat.newChat(tuple.ID) : characterAI.chat.getChat(tuple.ID);
-            String historyID = chat.get("external_id").asText();
-            if (!tuple.historyID.equals(historyID)) {
-                tuple.historyID = historyID;
-                MCAIConfig.save();
-                MCAIConfig.load();
-            }
-            String tgt = characterAI.chat.getTgt(tuple.ID);
-            JsonNode reply = characterAI.chat.sendMessage(
-                    historyID,
-                    format
-                            .replace("{user}", playerName)
-                            .replace("{message}", text),
-                    tgt);
-            sendMessage(replyFormat
-                    .replace("{char}", reply.get("src_char").get("participant").get("name").asText())
-                    .replace("{message}", reply.get("replies").get(0).get("text").asText()));
-        } catch (IOException ignored) { }
     }
 }

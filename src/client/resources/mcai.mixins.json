@@ -5,7 +5,7 @@
   "client": [
     "AdvancementMixin",
     "ClientPlayNetworkHandlerMixin",
-    "PlayerEntityMixin"
+    "ClientPlayerEntityMixin"
   ],
   "injectors": {
     "defaultRequire": 1
