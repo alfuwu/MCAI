@@ -2,40 +2,40 @@ package com.alfred.ai;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import me.shedaniel.autoconfig.AutoConfig;
-import me.shedaniel.autoconfig.serializer.Toml4jConfigSerializer;
+import me.shedaniel.autoconfig.serializer.GsonConfigSerializer;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.message.v1.ServerMessageEvents;
-import net.minecraft.network.PacketByteBuf;
+import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.util.Identifier;
 import net.minecraft.text.Text;
+import net.minecraft.util.Identifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.text.DecimalFormat;
+import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.*;
 
-import static com.alfred.ai.MCAIMod.characterAI;
-import static com.alfred.ai.MCAIMod.sendGlobalMessage;
-
 public class MCAIMod implements ModInitializer {
-	public static final String MODID = "mcai";
-	public static final Logger LOGGER = LoggerFactory.getLogger(MODID);
-	public static JavaCAI characterAI;
-	public static final Identifier ON_SERVER_PACKET_ID = new Identifier(MODID, "is_on_server_question_mark");
+	public static final String MOD_ID = "mcai";
+	public static final Logger LOGGER = LoggerFactory.getLogger("MCAI");
+	public static JavaCAI CHARACTER_AI;
+	public static final Identifier ON_SERVER_PACKET_ID = new Identifier(MOD_ID, "is_on_server_question_mark");
+	public static MCAIConfig CONFIG;
+	public static Map<MCAIConfig.CharacterTuple, ZonedDateTime> lastTalkedTo = new HashMap<>();
 
 	@Override
 	public void onInitialize() {
-		// Register the config file
-		AutoConfig.register(MCAIConfig.class, Toml4jConfigSerializer::new);
-		MCAIConfig config = MCAIConfig.getInstance();
+		// Register the CONFIG
+		CONFIG = AutoConfig.register(MCAIConfig.class, GsonConfigSerializer::new).getConfig();
 		// Create a C.AI instance
-		characterAI = new JavaCAI(config.General.authorization);
+		CHARACTER_AI = new JavaCAI(CONFIG.general.authorization);
 		Random random = new Random();
 
 		ServerPlayNetworking.registerGlobalReceiver(ON_SERVER_PACKET_ID, (server, player, handler, buf, responseSender) -> {
@@ -44,53 +44,65 @@ public class MCAIMod implements ModInitializer {
 
 		ServerMessageEvents.CHAT_MESSAGE.register((message, sender, params) -> {
 			String text = message.getSignedContent();
-			for (MCAIConfig.CharacterTuple tuple : config.AIs) {
+			for (MCAIConfig.CharacterTuple tuple : CONFIG.ais) {
 				if (tuple.disabled) // ignore disabled AIs
 					continue;
 				List<String> list = new java.util.ArrayList<>(Arrays.stream(tuple.aliases).toList());
 				list.add(0, tuple.name);
-				String[] arr = list.toArray(new String[] {});
+				String[] arr = list.toArray(String[]::new);
 				for (String name : arr) {
-					if (text.toLowerCase().contains(String.format("@%s", name.toLowerCase())) || (tuple.randomTalkChance > random.nextFloat() && !config.General.disableRandomResponses)) {
+					if (text.toLowerCase().contains(String.format("@%s", name.toLowerCase())) || (tuple.randomResponseChance > random.nextFloat() && !CONFIG.general.disableRandomResponses) || (!CONFIG.general.disableEveryonePing && (text.toLowerCase().contains("@everyone ") || text.toLowerCase().contains("@ai ")))) {
+						if (CONFIG.general.authorization.strip().equals("")) {
+							sender.sendMessage(Text.translatable("mcai.errors.no_authorization_token").withColor(0xFF1111));
+							return;
+						}
 						if (text.toLowerCase().startsWith(String.format("@%s", name.toLowerCase())))
 							text = text.substring(name.length() + 1); // chop off starting ping
 						sendAIMessage(
-								text, tuple, sender != null ? sender.getName().getLiteralString() : "Anonymous",
-								config.General.format, config.General.replyFormat, sender != null ? sender.getServer() : null);
-						tuple.setLastCommunicatedWith();
-						MCAIConfig.save();
-						MCAIConfig.load();
-						break;
+								text, tuple, sender.getName().getString(),
+								CONFIG.general.format, CONFIG.general.replyFormat, sender.getServer());
 					}
 				}
 			}
 		});
 		CommandRegistrationCallback.EVENT.register(((dispatcher, registryAccess, environment) -> MCAICommands.register(dispatcher)));
 		ServerTickEvents.START_SERVER_TICK.register((server -> {
-			if (!config.General.disableRandomTalking) {
+			if (!CONFIG.general.disableRandomTalking) {
 				Double globalLastTalkedWith = null;
 
-				for (MCAIConfig.CharacterTuple tuple : config.AIs) {
-					double lastTalkedWith = tuple.getLastCommunicatedWith(ZonedDateTime.now());
+				for (MCAIConfig.CharacterTuple tuple : CONFIG.ais) {
+					double lastTalkedWith = getLastCommunicatedWith(ZonedDateTime.now(), tuple);
 					if (globalLastTalkedWith == null || lastTalkedWith < globalLastTalkedWith)
 						globalLastTalkedWith = lastTalkedWith;
 				}
-				for (MCAIConfig.CharacterTuple tuple : config.AIs) {
-					//System.out.println(String.format("%s: %f %f %f", tuple.name, globalLastTalkedWith, tuple.randomTalkChance, random.nextFloat()));
+				for (MCAIConfig.CharacterTuple tuple : CONFIG.ais) {
 					if (globalLastTalkedWith >= tuple.minimumSecondsBeforeRandomTalking && tuple.randomTalkChance > random.nextFloat()) {
 						sendAIMessage(
-								' ' + config.General.randomTalkMessage.replace("{time}", generalizeNumberToTime(tuple.talkIntervalSpecificity, globalLastTalkedWith)),
-								tuple, config.General.systemName, config.General.format, config.General.replyFormat, server);
+								' ' + CONFIG.general.randomTalkMessage.replace("{time}", generalizeNumberToTime(tuple.talkIntervalSpecificity, globalLastTalkedWith)),
+								tuple, CONFIG.general.systemName, CONFIG.general.format, CONFIG.general.replyFormat, server);
 					}
 				}
 			}
 		}));
 	}
 
-	public static Tuple<Double> divmod(double num, double div) {
-		double quotient = Math.floor(num / div);
-		double remainder = num % div;
-		return new Tuple(quotient, remainder);
+	public static ZonedDateTime getLastCommunicatedWith(MCAIConfig.CharacterTuple tuple) {
+		return lastTalkedTo.computeIfAbsent(tuple, key -> null);
+	}
+
+	public static double getLastCommunicatedWith(ZonedDateTime time, MCAIConfig.CharacterTuple tuple) {
+		if (getLastCommunicatedWith(tuple) == null)
+			return -1; // can't return null because AAAAAAAAA
+		else
+			return Duration.between(getLastCommunicatedWith(tuple).toInstant(), time.toInstant()).toMillis() / 1000.0d;
+	}
+
+	public static void setLastCommunicatedWith(MCAIConfig.CharacterTuple tuple) {
+		setLastCommunicatedWith(tuple, ZonedDateTime.now());
+	}
+
+	public static void setLastCommunicatedWith(MCAIConfig.CharacterTuple tuple, ZonedDateTime time) {
+		lastTalkedTo.put(tuple, time);
 	}
 
 	public static String generalizeNumberToTime(double value, double number) {
@@ -108,17 +120,13 @@ public class MCAIMod implements ModInitializer {
 		return new DecimalFormat("#,###.######").format(number);
 	}
 
-	public static String oldFormatDouble(double number) {
-		return String.format("%,f", number).substring(0, String.format("%,f", number).length() - 1) // remove last digit to fix precision
-				.replaceAll("0*$", "") // strip trailing zeroes
-				.replaceAll("\\.$", ""); // remove decimal point if number was an integer
-	}
-
 	public static void sendPrivateMessage(String message, ServerPlayerEntity player) {
 		player.sendMessage(Text.literal(message));
 	}
 
 	public static void sendGlobalMessage(String text, MinecraftServer server) {
+		if (server == null)
+			return;
 		sendGlobalMessage(text, server.getPlayerManager().getPlayerList());
 	}
 
@@ -127,50 +135,29 @@ public class MCAIMod implements ModInitializer {
 	}
 
 	public static void sendAIMessage(String text, MCAIConfig.CharacterTuple tuple, String name, String format, String replyFormat, MinecraftServer server) {
-		Runnable task = new AIResponse(tuple, text, name, format, replyFormat, server);
-		Thread thread = new Thread(null, task, "HTTP thread");
+		Thread thread = new Thread(null, () -> {
+			try {
+				JsonNode chat = (tuple.historyId == null || tuple.historyId.strip().equals("")) ? CHARACTER_AI.chat.newChat(tuple.id) : CHARACTER_AI.chat.getChat(tuple.id);
+				String historyId = chat.get("external_id").asText();
+				if (!tuple.historyId.equals(historyId)) {
+					tuple.historyId = historyId;
+					MCAIConfig.save();
+				}
+				String tgt = CHARACTER_AI.chat.getTgt(tuple.id);
+				JsonNode reply = CHARACTER_AI.chat.sendMessage(historyId,
+						format
+								.replace("{user}", name)
+								.replace("{message}", text),
+						tgt);
+				setLastCommunicatedWith(tuple);
+				String replyText = replyFormat
+						.replace("{char}", reply.get("src_char").get("participant").get("name").asText())
+						.replace("{message}", reply.get("replies").get(0).get("text").asText())
+						.replace("\n\n", "\n");
+				LOGGER.info(replyText);
+				sendGlobalMessage(replyText, server);
+			} catch (IOException ignored) { }
+		}, "HTTP thread");
 		thread.start();
-	}
-}
-
-class AIResponse implements Runnable {
-	private final MCAIConfig.CharacterTuple tuple;
-	public final String text;
-	public final String playerName;
-	public final String format;
-	public final String replyFormat;
-	public final MinecraftServer server;
-
-	public AIResponse(MCAIConfig.CharacterTuple tuple, String text, String playerName, String format, String replyFormat, MinecraftServer server) {
-		this.tuple = tuple;
-		this.text = text;
-		this.playerName = playerName == null ? "Anonymous" : playerName;
-		this.format = format;
-		this.replyFormat = replyFormat;
-		this.server = server;
-	}
-
-	@Override
-	public void run() {
-		try {
-			JsonNode chat = (tuple.historyID == null || tuple.historyID.strip().equals("")) ? characterAI.chat.newChat(tuple.ID) : characterAI.chat.getChat(tuple.ID);
-			String historyID = chat.get("external_id").asText();
-			if (!tuple.historyID.equals(historyID)) {
-				tuple.historyID = historyID;
-				MCAIConfig.save();
-				MCAIConfig.load();
-			}
-			String tgt = characterAI.chat.getTgt(tuple.ID);
-			JsonNode reply = characterAI.chat.sendMessage(
-					historyID,
-					format
-							.replace("{user}", playerName)
-							.replace("{message}", text),
-					tgt);
-			sendGlobalMessage(replyFormat
-					.replace("{char}", reply.get("src_char").get("participant").get("name").asText())
-					.replace("{message}", reply.get("replies").get(0).get("text").asText())
-					.replace("\n\n", "\n"), server);
-		} catch (IOException ignored) { }
 	}
 }
