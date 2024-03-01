@@ -31,5 +31,8 @@
 		"java": ">=17",
 		"fabric-api": "*",
 		"cloth-config": "*"
+	},
+	"suggests": {
+		"styledchat":  "*"
 	}
 }

@@ -42,7 +42,7 @@ public class MCAIConfig implements ConfigData {
         public boolean disableLeaveResponses = false;
         public boolean disableRecipeResponses = true;
         public String randomTalkMessage = "Nobody has talked for {time}.";
-        public String advancementMessage = "{player} has gained the advancement **[{advancement}]**!";
+        public String advancementMessage = "{player} has gained the advancement **[{advancement}]**!\n*{advancement_desc}*";
         public String joinMessage = "{player} joined!";
         public String leaveMessage = "{player} left.";
         public String systemName = "SYSTEM";
