@@ -5,6 +5,7 @@ import me.shedaniel.autoconfig.AutoConfig;
 import me.shedaniel.autoconfig.ConfigData;
 import me.shedaniel.autoconfig.annotation.Config;
 import me.shedaniel.autoconfig.annotation.ConfigEntry;
+import me.shedaniel.cloth.clothconfig.shadowed.blue.endless.jankson.Comment;
 
 import java.util.HashMap;
 import java.util.List;
@@ -13,12 +14,12 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.Duration;
 
-@Config(name = "mcai")
+@Config(name = "mcai-client")
 public class MCAIConfig implements ConfigData {
     @ConfigEntry.Gui.TransitiveObject
-    @ConfigEntry.Category("General")
+    @ConfigEntry.Category("general")
     public General general = new General();
-    @ConfigEntry.Category("AIs")
+    @ConfigEntry.Category("ais")
     public List<CharacterTuple> ais = Lists.newArrayList();
 
     public static MCAIConfig getInstance() {
@@ -35,13 +36,20 @@ public class MCAIConfig implements ConfigData {
         public String format = "{user}:{message}";
         public String replyFormat = "<{char}> {message}";
         public String authorization = "";
-        public boolean disableRandomResponses = false;
-        public boolean disableRandomTalking = false;
+        public boolean disableEveryonePing = true;
         public boolean disableAdvancementResponses = false;
         public boolean disableDeathMessageResponses = false;
+        public boolean disableRandomResponses = false;
+        public boolean disableRandomTalking = false;
+        public boolean disableJoinResponses = false;
+        public boolean disableLeaveResponses = false;
         public boolean disableRecipeResponses = true;
+        @Comment("By default, this mod disables itself if its on the server. This can toggle that functionality.")
         public boolean ignoreOnServer = false;
         public String randomTalkMessage = "Nobody has talked for {time}.";
+        public String advancementMessage = "{player} has gained the advancement **[{advancement}]**!\n*{advancement_desc}*";
+        public String joinMessage = "{player} joined!";
+        public String leaveMessage = "{player} left.";
         public String systemName = "SYSTEM";
 
         public General() { }
@@ -53,10 +61,13 @@ public class MCAIConfig implements ConfigData {
         public String historyId;
         public String[] aliases;
         public float advancementResponseChance = 0.5f;
+        @ConfigEntry.Gui.Excluded // no GUI provider for Map class
         public Map<String, Float> advancementResponseOverrideChances = new HashMap<>();
         public float deathMessageResponseChance = 0.5f;
         public float randomResponseChance = 0.069f;
-        public float randomTalkChance = 0.002f;
+        public float randomTalkChance = 0.00004f;
+        public float joinResponseChance = 0.5f;
+        public float leaveResponseChance = 0.5f;
         public double minimumSecondsBeforeRandomTalking = 100;
         public double talkIntervalSpecificity = 0.2;
         public boolean disabled = false;

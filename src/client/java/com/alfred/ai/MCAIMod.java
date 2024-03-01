@@ -10,8 +10,10 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.util.Identifier;
 import net.minecraft.text.Text;
+import net.minecraft.util.Identifier;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.text.DecimalFormat;
@@ -19,11 +21,9 @@ import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.*;
 
-import static com.alfred.ai.MCAIMod.CHARACTER_AI;
-import static com.alfred.ai.MCAIMod.sendMessage;
-
 public class MCAIMod implements ClientModInitializer {
 	public static final String MOD_ID = "mcai";
+	public static final Logger LOGGER = LoggerFactory.getLogger("MCAI");
 	public static JavaCAI CHARACTER_AI;
 	public static boolean onServer = false;
 	public static final Identifier ON_SERVER_PACKET_ID = new Identifier(MOD_ID, "is_on_server_question_mark");
@@ -40,12 +40,32 @@ public class MCAIMod implements ClientModInitializer {
 
 		// if the server echos the empty packet through the specified networking ID, assume MCAI is on the server
 		// if MCAI is on the server, the client-sided version will do nothing (if the config file says so)
-		ClientPlayNetworking.registerGlobalReceiver(ON_SERVER_PACKET_ID, (client, handler, buf, responseSender) -> onServer = buf.equals(PacketByteBufs.empty()));
+		ClientPlayNetworking.registerGlobalReceiver(ON_SERVER_PACKET_ID, (client, handler, buf, responseSender) -> onServer = buf.equals(PacketByteBufs.empty()) && !CONFIG.general.ignoreOnServer);
 
 		// send a packet to the server when client joins a server
 		ClientPlayConnectionEvents.JOIN.register((networkHandler, sender, client) -> {
 			onServer = false; // reset onServer
-			ClientPlayNetworking.send(ON_SERVER_PACKET_ID, PacketByteBufs.empty());
+			if (!CONFIG.general.ignoreOnServer)
+				ClientPlayNetworking.send(ON_SERVER_PACKET_ID, PacketByteBufs.empty());
+			if (!MCAIMod.CONFIG.general.disableJoinResponses && !onServer && client.player != null) {
+				for (MCAIConfig.CharacterTuple tuple : MCAIMod.CONFIG.ais) {
+					if (tuple.disabled)
+						continue;
+					if (tuple.joinResponseChance > random.nextFloat())
+						MCAIMod.sendAIMessage(MCAIMod.CONFIG.general.joinMessage.replace("{player}", client.player.getName().getString()), tuple, MCAIMod.CONFIG.general.systemName, MCAIMod.CONFIG.general.format, MCAIMod.CONFIG.general.replyFormat);
+				}
+			}
+		});
+		ClientPlayConnectionEvents.DISCONNECT.register((networkHandler, client) -> {
+			onServer = false;
+			if (!MCAIMod.CONFIG.general.disableLeaveResponses && client.player != null) {
+				for (MCAIConfig.CharacterTuple tuple : MCAIMod.CONFIG.ais) {
+					if (tuple.disabled)
+						continue;
+					if (tuple.leaveResponseChance > net.minecraft.util.math.random.Random.create().nextFloat())
+						MCAIMod.sendAIMessage(' ' + MCAIMod.CONFIG.general.leaveMessage.replace("{player}", client.player.getName().getString()), tuple, MCAIMod.CONFIG.general.systemName, MCAIMod.CONFIG.general.format, MCAIMod.CONFIG.general.replyFormat);
+				}
+			}
 		});
 
 		ClientCommandRegistrationCallback.EVENT.register(((dispatcher, registryAccess) -> MCAICommands.register(dispatcher)));
@@ -125,10 +145,13 @@ public class MCAIMod implements ClientModInitializer {
 								.replace("{user}", name)
 								.replace("{message}", text),
 						tgt);
-				sendMessage(replyFormat
+				setLastCommunicatedWith(tuple);
+				String replyText = replyFormat
 						.replace("{char}", reply.get("src_char").get("participant").get("name").asText())
 						.replace("{message}", reply.get("replies").get(0).get("text").asText())
-						.replace("\n\n", "\n"));
+						.replace("\n\n", "\n");
+				LOGGER.info(replyText);
+				sendMessage(replyText);
 			} catch (IOException ignored) { }
 		}, "HTTP thread");
 		thread.start();

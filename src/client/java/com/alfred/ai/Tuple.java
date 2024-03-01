@@ -3,7 +3,7 @@ package com.alfred.ai;
 import java.util.Arrays;
 
 public class Tuple<T> {
-    private final Object[] elements;
+    private final T[] elements;
 
     @SafeVarargs
     public Tuple(T... elements) {
@@ -13,7 +13,7 @@ public class Tuple<T> {
     public T get(int index) {
         if (index < 0 || index >= elements.length)
             throw new IndexOutOfBoundsException(String.format("Index out of bounds 0 - %d", elements.length));
-        return (T) elements[index];
+        return elements[index];
     }
 
     public void set(int index, T var) {

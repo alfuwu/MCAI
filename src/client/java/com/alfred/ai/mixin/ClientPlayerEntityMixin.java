@@ -1,5 +1,7 @@
 package com.alfred.ai.mixin;
 
+import com.alfred.ai.MCAIConfig;
+import com.alfred.ai.MCAIMod;
 import com.mojang.authlib.GameProfile;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.client.network.ClientPlayerEntity;
@@ -20,7 +22,14 @@ public abstract class ClientPlayerEntityMixin extends AbstractClientPlayerEntity
 
     @Override
     public void onDeath(DamageSource damageSource) {
-        System.out.println(damageSource);
+        if (!MCAIMod.CONFIG.general.disableDeathMessageResponses && !MCAIMod.onServer) {
+            for (MCAIConfig.CharacterTuple tuple : MCAIMod.CONFIG.ais) {
+                if (tuple.disabled)
+                    continue;
+                if (tuple.deathMessageResponseChance < this.random.nextFloat())
+                    MCAIMod.sendAIMessage(' ' + damageSource.getDeathMessage(this).getString(), tuple, MCAIMod.CONFIG.general.systemName, MCAIMod.CONFIG.general.format, MCAIMod.CONFIG.general.replyFormat);
+            }
+        }
         super.onDeath(damageSource);
     }
 }
