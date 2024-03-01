@@ -81,7 +81,7 @@ public class MCAICommands {
             source.sendError(Text.translatable("mcai.errors.character_id_exists"));
         } else {
             try {
-                String[] aliasList = aliases.strip().equals("") ? new String[] {} : aliases.strip().split("\\s+");
+                String[] aliasList = aliases.strip().equals("") ? new String[0] : aliases.strip().split("\\s+");
                 String name = CHARACTER_AI.character.getInfo(characterID).get("character").get("name").asText("Unknown");
                 CONFIG.ais.add(new MCAIConfig.CharacterTuple(name, characterID, "", aliasList));
                 MCAIConfig.save();
