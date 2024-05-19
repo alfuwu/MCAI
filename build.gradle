@@ -78,6 +78,7 @@ jar {
 shadowJar {
 	configurations = [project.configurations.shadow]
 	archiveClassifier.set("dev")
+	from(sourceSets.client.output)
 }
 
 remapJar {

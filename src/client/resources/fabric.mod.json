@@ -3,12 +3,12 @@
 	"id": "mcai",
 	"version": "1",
 	"name": "Minecraft AI",
-	"description": "This mod is an interface with https://c.ai, allowing you to interact with AI inside of the game!",
+	"description": "This mod connects Minecraft with https://c.ai, allowing you to interact with AI inside of the game!",
 	"authors": [
 		"Alfred uwu"
 	],
 	"contact": {
-		"homepage": "https://discord.gg/E8HxEhKqCg"
+		"homepage": ""
 	},
 	"license": "MIT",
 	"icon": "assets/mcai/icon.png",

@@ -22,8 +22,8 @@ import java.time.ZonedDateTime;
 import java.util.*;
 
 public class MCAIMod implements ClientModInitializer {
-	public static final String MOD_ID = "mcai";
-	public static final Logger LOGGER = LoggerFactory.getLogger("MCAI");
+	public static final String MOD_ID = "mcai-client";
+	public static final Logger LOGGER = LoggerFactory.getLogger("MCAI - Client");
 	public static JavaCAI CHARACTER_AI;
 	public static boolean onServer = false;
 	public static final Identifier ON_SERVER_PACKET_ID = new Identifier(MOD_ID, "is_on_server_question_mark");
