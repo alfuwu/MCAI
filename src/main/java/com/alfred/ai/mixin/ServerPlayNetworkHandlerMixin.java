@@ -2,9 +2,9 @@ package com.alfred.ai.mixin;
 
 import com.alfred.ai.MCAIConfig;
 import com.alfred.ai.MCAIMod;
+import net.minecraft.network.DisconnectionInfo;
 import net.minecraft.server.network.ServerPlayNetworkHandler;
 import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.text.Text;
 import net.minecraft.util.math.random.Random;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -17,7 +17,7 @@ public class ServerPlayNetworkHandlerMixin {
     @Shadow public ServerPlayerEntity player;
 
     @Inject(method = "onDisconnected", at = @At("HEAD"))
-    private void onDisconnected(Text reason, CallbackInfo ci) {
+    private void onDisconnected(DisconnectionInfo info, CallbackInfo ci) {
         if (!MCAIMod.CONFIG.general.disableLeaveResponses && this.player.server.getPlayerManager().getPlayerList().size() - 1 > 0) { // don't respond when nobody is left in the server
             for (MCAIConfig.CharacterTuple tuple : MCAIMod.CONFIG.ais) {
                 if (tuple.disabled)

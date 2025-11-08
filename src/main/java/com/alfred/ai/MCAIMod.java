@@ -7,7 +7,6 @@ import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.message.v1.ServerMessageEvents;
-import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -26,7 +25,7 @@ public class MCAIMod implements ModInitializer {
 	public static final String MOD_ID = "mcai";
 	public static final Logger LOGGER = LoggerFactory.getLogger("MCAI");
 	public static JavaCAI CHARACTER_AI;
-	public static final Identifier ON_SERVER_PACKET_ID = new Identifier(MOD_ID, "is_on_server_question_mark");
+	public static final Identifier ON_SERVER_PACKET_ID = Identifier.of(MOD_ID, "is_on_server_question_mark");
 	public static MCAIConfig CONFIG;
 	public static Map<MCAIConfig.CharacterTuple, ZonedDateTime> lastTalkedTo = new HashMap<>();
 
@@ -38,8 +37,8 @@ public class MCAIMod implements ModInitializer {
 		CHARACTER_AI = new JavaCAI(CONFIG.general.authorization);
 		Random random = new Random();
 
-		ServerPlayNetworking.registerGlobalReceiver(ON_SERVER_PACKET_ID, (server, player, handler, buf, responseSender) -> {
-			ServerPlayNetworking.send(player, ON_SERVER_PACKET_ID, PacketByteBufs.empty()); // echo
+		ServerPlayNetworking.registerGlobalReceiver(EchoPayload.ID, (server, ctx) -> {
+			ServerPlayNetworking.send(ctx.player(), new EchoPayload()); // echo
 		});
 
 		ServerMessageEvents.CHAT_MESSAGE.register((message, sender, params) -> {
@@ -48,11 +47,11 @@ public class MCAIMod implements ModInitializer {
 				if (tuple.disabled) // ignore disabled AIs
 					continue;
 				List<String> list = new java.util.ArrayList<>(Arrays.stream(tuple.aliases).toList());
-				list.add(0, tuple.name);
+				list.addFirst(tuple.name);
 				String[] arr = list.toArray(String[]::new);
 				for (String name : arr) {
 					if (text.toLowerCase().contains(String.format("@%s", name.toLowerCase())) || (tuple.randomResponseChance > random.nextFloat() && !CONFIG.general.disableRandomResponses) || (!CONFIG.general.disableEveryonePing && (text.toLowerCase().contains("@everyone ") || text.toLowerCase().contains("@ai ")))) {
-						if (CONFIG.general.authorization.strip().equals("")) {
+						if (CONFIG.general.authorization.isBlank()) {
 							sender.sendMessage(Text.translatable("mcai.errors.no_authorization_token").withColor(0xFF1111));
 							return;
 						}
@@ -92,7 +91,7 @@ public class MCAIMod implements ModInitializer {
 
 	public static double getLastCommunicatedWith(ZonedDateTime time, MCAIConfig.CharacterTuple tuple) {
 		if (getLastCommunicatedWith(tuple) == null)
-			return -1; // can't return null because AAAAAAAAA
+			return -1;
 		else
 			return Duration.between(getLastCommunicatedWith(tuple).toInstant(), time.toInstant()).toMillis() / 1000.0d;
 	}

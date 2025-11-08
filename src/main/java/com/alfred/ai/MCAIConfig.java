@@ -67,6 +67,7 @@ public class MCAIConfig implements ConfigData {
         public double talkIntervalSpecificity = 0.2;
         public boolean disabled = false;
 
+        // required because Cloth needs an empty constructor for serialization
         public CharacterTuple() {
             this("", "", "", new String[0]);
         }

@@ -8,7 +8,7 @@ import java.io.IOException;
 import java.util.Objects;
 
 public class JavaCAI {
-    private static final String BASE_URL = "https://beta.character.ai/";
+    private static final String BASE_URL = "https://character.ai/";
     private final String token;
     private final OkHttpClient client;
     public final User user;
