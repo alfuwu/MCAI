@@ -2,558 +2,959 @@ package com.alfred.ai;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import okhttp3.*;
+import okio.ByteString;
 
 import java.io.IOException;
-import java.util.Objects;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
+import java.util.concurrent.*;
 
 public class JavaCAI {
-    private static final String BASE_URL = "https://character.ai/";
+    private static final String BASE_URL = "https://plus.character.ai/";
+    private static final String NEO_URL = "https://neo.character.ai/";
+    private static final String NEO_WS_URL = "wss://neo.character.ai/ws/";
+    private final ObjectMapper mapper = new ObjectMapper();
     private final OkHttpClient client;
+    private String accountId;
     public final User user;
-    public final Post post;
     public final Character character;
     public final Chat chat;
 
     public JavaCAI() {
         this.client = new OkHttpClient();
         this.user = new User();
-        this.post = new Post();
         this.character = new Character();
         this.chat = new Chat();
+
+        this.updateAuthorization();
+    }
+
+    public void tryGetAccountId() {
+        if (!MCAIMod.CONFIG.general.authorization.isBlank()) {
+            try {
+                JsonNode me = request("chat/user/", "GET", null).get("user").get("user");
+                accountId = me.get("id").asText();
+            } catch (IOException e) {
+                MCAIMod.LOGGER.error("Unable to get user data. Will require restart or the `/ai authorize` to be run.");
+            }
+        }
+    }
+
+    public void updateAuthorization() {
+        tryGetAccountId();
     }
 
     public JsonNode request(String url, String method, JsonNode data) throws IOException {
-        String link = BASE_URL + url;
+        Request.Builder builder = new Request.Builder().url(url.startsWith("http") ? url : BASE_URL + url);
+        MediaType JSON = MediaType.parse("application/json; charset=utf-8");
 
-        Request.Builder requestBuilder;
-
-        if ("GET".equals(method)) {
-            requestBuilder = new Request.Builder().url(link);
-        } else if ("POST".equals(method) || "POST-SPLIT".equals(method)) {
-            MediaType JSON = MediaType.parse("application/json; charset=utf-8");
-            RequestBody requestBody = RequestBody.create(JSON, data.toString());
-            requestBuilder = new Request.Builder().url(link).post(requestBody);
-        } else if ("PUT".equals(method) || "PUT-SPLIT".equals(method)) {
-            MediaType JSON = MediaType.parse("application/json; charset=utf-8");
-            RequestBody requestBody = RequestBody.create(JSON, data.toString());
-            requestBuilder = new Request.Builder().url(link).put(requestBody);
+        if ("GET".equalsIgnoreCase(method)) {
+            builder.get();
+        } else if ("POST".equalsIgnoreCase(method)) {
+            builder.post(RequestBody.create(JSON, data != null ? data.toString() : "{}"));
+        } else if ("PUT".equalsIgnoreCase(method)) {
+            builder.put(RequestBody.create(JSON, data != null ? data.toString() : "{}"));
+        } else if ("PATCH".equalsIgnoreCase(method)) {
+            builder.patch(RequestBody.create(JSON, data != null ? data.toString() : "{}"));
         } else {
-            throw new IllegalArgumentException("Invalid HTTP method: " + method);
+            throw new IllegalArgumentException("Invalid method: " + method);
         }
 
-        Request request = requestBuilder
-                .addHeader("Authorization", "Token " + MCAIMod.CONFIG.general.authorization)
-                .build();
+        builder.addHeader("Authorization", "Token " + MCAIMod.CONFIG.general.authorization);
 
-        try (Response response = client.newCall(request).execute()) {
-            if (!response.isSuccessful()) throw new IOException("Unexpected code " + response);
-            ObjectMapper objectMapper = new ObjectMapper();
-            if (method.endsWith("-SPLIT")) {
-                String text = "[" + Objects.requireNonNull(response.body()).string().replace("\n", "").replace("}{", "},{") + "]";
-                JsonNode jsonNode = objectMapper.readTree(text);
-                return jsonNode.get(jsonNode.size() - 1);
-            }
-            return objectMapper.readTree(Objects.requireNonNull(response.body()).string());
+        try (Response response = client.newCall(builder.build()).execute()) {
+            if (!response.isSuccessful()) throw new IOException("Unexpected code: " + response);
+            String body = Objects.requireNonNull(response.body()).string();
+            return mapper.readTree(body);
         }
     }
 
-    /**
-     * A class for obtaining info about users.
-     * <p></p>
-     * <code>user.getInfo()</code><br></br>
-     * <code>user.getUserProfile('USERNAME')</code><br></br>
-     * <code>user.getFollowers()</code><br></br>
-     * <code>user.getFollowing()</code><br></br>
-     * <code>user.update('USERNAME')</code> -- not implementing
-     */
+    private Headers buildNeoHeaders() {
+        Headers.Builder hb = new Headers.Builder();
+        hb.add("Authorization", "Token " + MCAIMod.CONFIG.general.authorization);
+        hb.add("Accept", "application/json");
+        hb.add("Content-Type", "application/json");
+        return hb.build();
+    }
+
     public class User {
-        public JsonNode getInfo() throws IOException {
-            return request("chat/user/", "GET", null);
+        public JsonNode fetchUser(String username) throws IOException {
+            ObjectNode data = mapper.createObjectNode().put("username", username);
+            JsonNode res = request("chat/user/public/", "POST", data);
+            if (res.has("public_user")) return res.get("public_user");
+            return null;
         }
 
-        public JsonNode getUserProfile(String username) throws IOException {
-            JsonNode data = new ObjectMapper().createObjectNode()
-                    .put("username", username);
-            return request("chat/user/public", "GET", data);
+        public JsonNode fetchUserVoices(String username) throws IOException {
+            JsonNode res = request(NEO_URL + "multimodal/api/v1/voices/search?creatorInfo.username=" + username, "GET", null);
+            if (res.has("command") && "neo_error".equals(res.get("command").asText())) {
+                throw new IOException("Cannot fetch user voices: " + res.get("comment").asText());
+            }
+            return res;
         }
 
-        public JsonNode getFollowers() throws IOException {
-            return request("chat/user/followers", "GET", null);
+        public boolean followUser(String username) throws IOException {
+            ObjectNode data = mapper.createObjectNode().put("username", username);
+            JsonNode res = request("chat/user/follow/", "POST", data);
+            return res.has("status") && "OK".equals(res.get("status").asText());
         }
 
-        public JsonNode getFollowing() throws IOException {
-            return request("chat/user/following", "GET", null);
+        public boolean unfollowUser(String username) throws IOException {
+            ObjectNode data = mapper.createObjectNode().put("username", username);
+            JsonNode res = request("chat/user/unfollow/", "POST", data);
+            return res.has("status") && "OK".equals(res.get("status").asText());
         }
-
-        public JsonNode recent() throws IOException {
-            return request("chat/user/recent", "GET", null);
-        }
-
-        public JsonNode characters() throws IOException {
-            return request("chat/characters/?scope=user", "GET", null);
-        }
-
-        /*/ public JsonNode update(String username) throws IOException {
-            JsonNode data = new ObjectMapper().createObjectNode()
-                    .put("username", username);
-            return request("chat/user/public", "GET", data);
-        } /*/
     }
 
-    /**
-     * A class for messing about with posts on the site.
-     * <p></p>
-     * <code>post.getPost('POST_ID')
-     * <code>post.getMyPosts()</code><br></br>
-     * <code>post.getPosts('USERNAME')</code><br></br>
-     * <code>post.upvote('POST_ID')</code><br></br>
-     * <code>post.undoUpvote('POST_ID')</code><br></br>
-     * <code>post.sendComment('POST_ID', 'TEXT')</code><br></br>
-     * <code>post.deleteComment('MESSAGE_ID', 'POST_ID')</code><br></br>
-     * <code>post.create('HISTORY_ID', 'TITLE')</code><br></br>
-     * <code>post.delete('POST_ID')</code>
-     */
-    public class Post {
-
-        public JsonNode getPost(String postId) throws IOException {
-            return request("chat/post/?post=" + postId, "GET", null);
-        }
-
-        public JsonNode getMyPosts(int postsPage, int postsToLoad) throws IOException {
-            String url = String.format("chat/posts/user/?scope=user&page=%d&posts_to_load=%d", postsPage, postsToLoad);
-            return request(url, "GET", null);
-        }
-
-        /*
-        def my(
-            self, *, posts_page: int = 1,
-            posts_to_load: int = 5, token: str = None
-        ):
-            return PyCAI.request(
-                f'chat/posts/user/?scope=user&page={posts_page}'
-                f'&posts_to_load={posts_to_load}/',
-                self.session
-            )
-
-        def get_posts(
-            self, username: str, *,
-            posts_page: int = 1, posts_to_load: int = 5,
-        ):
-            return PyCAI.request(
-                f'chat/posts/user/?username={username}'
-                f'&page={posts_page}&posts_to_load={posts_to_load}/',
-                self.session
-            )
-
-        def upvote(
-            self, post_external_id: str,
-            *, token: str = None
-        ):
-            return PyCAI.request(
-                'chat/post/upvote/', self.session,
-                token=token, method='POST',
-                data={
-                    'post_external_id': post_external_id
-                }
-            )
-
-        def undo_upvote(
-            self, post_external_id: str,
-            *, token: str = None
-        ):
-            return PyCAI.request(
-                'chat/post/undo-upvote/', self.session,
-                token=token, method='POST',
-                data={
-                    'post_external_id': post_external_id
-                }
-            )
-
-        def send_comment(
-            self, post_id: str, text: str, *,
-            parent_uuid: str = None, token: str = None
-        ):
-            return PyCAI.request(
-                'chat/comment/create/', self.session,
-                token=token, method='POST',
-                data={
-                    'post_external_id': post_id,
-                    'text': text,
-                    'parent_uuid': parent_uuid
-                }
-            )
-
-        def delete_comment(
-            self, message_id: int, post_id: str,
-            *, token: str = None
-        ):
-            return PyCAI.request(
-                'chat/comment/delete/', self.session,
-                token=token, method='POST',
-                data={
-                    'external_id': message_id,
-                    'post_external_id': post_id
-                }
-            )
-
-        def create(
-            self, post_type: str, external_id: str,
-            title: str, text: str = '',
-            post_visibility: str = 'PUBLIC',
-            token: str = None, **kwargs
-        ):
-            if post_type == 'POST':
-                post_link = 'chat/post/create/'
-                data = {
-                    'post_title': title,
-                    'topic_external_id': external_id,
-                    'post_text': text,
-                    **kwargs
-                }
-            elif post_type == 'CHAT':
-                post_link = 'chat/chat-post/create/'
-                data = {
-                    'post_title': title,
-                    'subject_external_id': external_id,
-                    'post_visibility': post_visibility,
-                    **kwargs
-                }
-            else:
-                raise errors.PostTypeError('Invalid post_type')
-
-            return PyCAI.request(
-                post_link, self.session,
-                token=token, method='POST'
-            )
-
-        def delete(
-            self, post_id: str, *,
-            token: str = None
-        ):
-            return PyCAI.request(
-                'chat/post/delete/', self.session,
-                token=token, method='POST',
-                data={
-                    'external_id': post_id
-                }
-            )
-
-        def get_topics(self):
-            return PyCAI.request(
-                'chat/topics/', self.session
-            )
-
-        def feed(
-            self, topic: str, num: int = 1,
-            load: int = 5, sort: str = 'top', *,
-            token: str = None
-        ):
-            return PyCAI.request(
-                f'chat/posts/?topic={topic}&page={num}'
-                f'&posts_to_load={load}&sort={sort}',
-                self.session, token=token
-            )
-        */
-    }
-
-    /**
-     * A class for managing and obtaining information about characters.
-     * <p></p>
-     * <code>character.create()</code><br></br>
-     * <code>character.update()</code><br></br>
-     * <code>character.getTrending()</code><br></br>
-     * <code>character.getRecommended()</code><br></br>
-     * <code>character.getCategories()</code><br></br>
-     * <code>character.getInfo('CHAR')</code><br></br>
-     * <code>character.search('QUERY')</code><br></br>
-     * <code>character.getVoices()</code><br>
-     */
     public class Character {
-        /*
-         * Creates a new character.
-         * Arguments:
-         *     greeting: String, the initial message the character sends at the start of a chat
-         *     identifier: String, character `tgt`. the site generates a special value, but you can write anything there
-         *     name: String, the name of the character
-         *     avatarRelPath: String, the path to the avatar image on the server. you can create this path with the uploadImage() function
-         *     baseImgPrompt: String, most likely so you can do a basic setup of prompts for images
-         *     imgGenEnabled: boolean, enables the character image generation abilities
-         *     shortDescription: String, a very short description of the character, max 50 characters
-         *     categories: String[], the categories the AI falls under
-         *     definition: String, a long description of the character, max 32k characters (cuts off at ~3.2k chars)
-         *     copyable: boolean, whether the character's details are public
-         *     description: String, a 500-character-long description of the character
-         *     visibility: "PUBLIC", "UNLISTED", "PRIVATE", the visibility of the character ("public" means everyone can see the character, "unlisted" means anyone with a link can see the character, and "private" means only the creator can see the character)
-         */
-        public JsonNode create(
-                String greeting, String identifier, String name,
-                String shortDescription, String[] categories, String definition,
-                boolean copyable, String description, String visibility
-        ) throws IOException {
-            JsonNode data = new ObjectMapper().createObjectNode()
-                    .put("identifier", identifier)
-                    .put("name", name)
-                    .putPOJO("categories", categories)
-                    .put("title", shortDescription)
-                    .put("visibility", visibility)
-                    .put("copyable", copyable)
-                    .put("description", description)
-                    .put("greeting", greeting)
-                    .put("definition", definition);
-            return request("../chat/character/create/", "POST", data);
-        }
-
-        /*
-         * Updates a character's properties.
-         * Arguments:
-         *     characterId: String, the character's ID
-         *     greeting: String,
-         *     shortDescription: String, a short, ~5-word description of the character
-         *     categories: String[],
-         *     definition: String,
-         *     copyable: boolean,
-         *     description: String,
-         *     visibility: "PUBLIC", "UNLISTED", "PRIVATE",
-         */
-        public JsonNode update(
-                String characterId, String greeting, String name,
-                String shortDescription, String[] categories, String definition,
-                boolean copyable, String description, String visibility
-        ) throws IOException {
-            JsonNode data = new ObjectMapper().createObjectNode()
-                    .put("external_id", characterId)
-                    .put("name", name)
-                    .putPOJO("categories", categories)
-                    .put("title", shortDescription)
-                    .put("visibility", visibility)
-                    .put("copyable", copyable)
-                    .put("description", description)
-                    .put("greeting", greeting)
-                    .put("definition", definition);
-            return request("../chat/character/update/", "POST", data);
-        }
-
-        /*
-         * Gets metadata about trending characters.
-         */
-        public JsonNode getTrending() throws IOException {
-            return request("chat/characters/trending", "GET", null);
-        }
-
-        /*
-         * Gets metadata about recommended characters.
-         */
-        public JsonNode getRecommended() throws IOException {
-            return request("chat/characters/recommended", "GET", null);
-        }
-
-        /*
-         * Retrieves all the categories you can give to a character.
-         */
-        public JsonNode getCategories() throws IOException {
-            return request("chat/character/categories", "GET", null);
-        }
-
-        /**
-         * @deprecated
-         */
-        /*
-         * Obtains info about a specific character.
-         * Arguments:
-         *     characterId: String, the character's ID
-         */
-        public JsonNode deprecatedGetInfo(String characterId) throws IOException {
-            JsonNode data = new ObjectMapper().createObjectNode()
-                    .put("external_id", characterId);
-            return request("chat/character/", "POST", data);
-        }
-
-        /*
-         * Obtains info about a specific character, even if you do not have the necessary permissions to view that information.
-         * Arguments:
-         *     characterId: String, the character's ID
-         */
         public JsonNode getInfo(String characterId) throws IOException {
             JsonNode data = new ObjectMapper().createObjectNode()
                     .put("external_id", characterId);
-            return request("chat/character/info/", "POST", data);
-        }
-
-        /*
-         * Retrieves all available voices you can give to a character.
-         */
-        public JsonNode getVoices() throws IOException {
-            return request("chat/character/voices", "GET", null);
-        }
-
-        /*
-         * Gets metadata about relevant characters according to a query.
-         * Arguments:
-         *     query: String, the search topic
-         */
-        public JsonNode search(String query) throws IOException {
-            return request(String.format("chat/characters/search/?query=%s", query), "GET", null);
+            return request(NEO_URL + "character/v1/get_character_info", "POST", data);
         }
     }
 
-    /**
-     * Managing a chat with a character.
-     * <p></p>
-     * <code>chat.createRoom('CHARACTERS', 'NAME', 'TOPIC')</code><br></br>
-     * <code>chat.rate(NUM, 'HISTORY_ID', 'MESSAGE_ID')</code><br></br>
-     * <code>chat.nextMessage('CHAR', 'MESSAGE')</code><br></br>
-     * <code>chat.getHistories('CHAR')</code><br></br>
-     * <code>chat.getHistory('HISTORY_EXTERNAL_ID')</code><br></br>
-     * <code>chat.getChat('CHAR')</code><br></br>
-     * <code>chat.sendMessage('CHAR', 'MESSAGE')</code><br></br>
-     * <code>chat.deleteMessage('HISTORY_ID', 'UUIDS_TO_DELETE')</code><br></br>
-     * <code>chat.newChat('CHAR')</code>
-    */
     public class Chat {
-        /*
-         * Creates a Character.AI Room (a chat with multiple characters).
-         * Arguments:
-         *     characters: String[], list of character IDs to be present in the room
-         *     name: String, the name of the room
-         *     topic: String, the starting message of the room (leave '' for no topic)
-         */
-        public JsonNode createRoom(String[] characters, String name, String topic) throws IOException {
-            JsonNode data = new ObjectMapper().createObjectNode()
-                    .putPOJO("characters", characters)
-                    .put("name", name)
-                    .put("topic", topic)
-                    .put("visibility", "PRIVATE");
-            return request("../chat/room/create/", "POST", data);
-        }
-
-        /*
-         * Rate a message from 1-4, where:
-         *     1 = terrible (1 star)
-         *     2 = bad (2 stars)
-         *     3 = good (3 stars)
-         *     4 = fantastic (4 stars)
-         * Arguments:
-         *     rating: int (1-4), the rating to give the message
-         *     historyId: String, the history ID containing the message to rate
-         *     messageID: String, the message ID of the message you want to rate
-         */
-        public JsonNode rate(int rating, String historyId, String messageID) throws IOException {
-            int[] label = new int[][] {
-                    {234, 238, 241, 244}, // terrible
-                    {235, 237, 241, 244}, // bad
-                    {235, 238, 240, 244}, // good
-                    {235, 238, 241, 243} // fantastic
-            }[rating-1]; // select based off of rating
-
-            JsonNode data = new ObjectMapper().createObjectNode()
-                    .putPOJO("label_ids", label)
-                    .put("history_external_id", historyId)
-                    .put("message_uuid", messageID);
-            return request("chat/annotations/label/", "PUT", data);
-        }
-
-        /*
-         * Retry a response.
-         * Arguments:
-         *     historyId: String, the history ID containing the message
-         *     messageID: String, the message ID of the message you want to rate
-         *     tgt: String,
-         */
-        public JsonNode nextMessage(String historyId, String messageID, String tgt) throws IOException {
-            JsonNode data = new ObjectMapper().createObjectNode()
-                    .put("history_external_id", historyId)
-                    .put("parent_msg_uuid", messageID)
-                    .put("tgt", tgt);
-            return request("chat/streaming/", "POST-SPLIT", data);
-        }
-
-        /*
-         * Get history data from a character.
-         * Arguments:
-         *     characterId: String, the ID of the character in which you want to obtain the histories from
-         *     number: int, the amount of histories to retrieve
-         */
-        public JsonNode getHistories(String characterId, int number) throws IOException {
-            JsonNode data = new ObjectMapper().createObjectNode()
+        public JsonNode fetchHistories(String characterId, int amount) throws IOException {
+            ObjectNode body = mapper.createObjectNode()
                     .put("external_id", characterId)
-                    .put("number", number);
-            return request("chat/character/histories_v2/", "POST", data);
+                    .put("number", amount);
+            Request req = new Request.Builder()
+                    .url(NEO_URL + "chat/character/histories/")
+                    .post(RequestBody.create(MediaType.parse("application/json; charset=utf-8"), body.toString()))
+                    .headers(buildNeoHeaders())
+                    .build();
+
+            try (Response resp = client.newCall(req).execute()) {
+                String b = Objects.requireNonNull(resp.body()).string();
+                JsonNode json = mapper.readTree(b);
+                if (resp.code() == 200) return json;
+                throw new IOException("Cannot fetch histories. " + json);
+            }
         }
 
-        /*
-         * Gets messages from a history.
-         * Arguments:
-         *     historyId: String, the history ID
-         */
-        public JsonNode getHistory(String historyId) throws IOException {
-            return request("chat/history/msgs/user/?history_external_id=" + historyId, "GET", null);
+        public JsonNode fetchChats(String characterId, Integer numPreviewTurns) throws IOException {
+            int n = numPreviewTurns != null ? numPreviewTurns : 2;
+            HttpUrl url = HttpUrl.parse(NEO_URL + "chats/").newBuilder()
+                    .addQueryParameter("character_ids", characterId)
+                    .addQueryParameter("num_preview_turns", String.valueOf(n))
+                    .build();
+
+            Request req = new Request.Builder()
+                    .url(url)
+                    .headers(buildNeoHeaders())
+                    .get()
+                    .build();
+
+            try (Response resp = client.newCall(req).execute()) {
+                String b = Objects.requireNonNull(resp.body()).string();
+                JsonNode json = mapper.readTree(b);
+                if (resp.code() == 200) return json;
+                if (json.has("command") && "neo_error".equals(json.get("command").asText())) {
+                    throw new IOException("Cannot fetch chats. " + json.path("comment").asText());
+                }
+                throw new IOException("Cannot fetch chats. " + json);
+            }
         }
 
-        /*
-         * Gets metadata about the last chat you had with a character.
-         * Arguments:
-         *     characterId: String, the character's ID
-         */
-        public JsonNode getChat(String characterId) throws IOException {
-            JsonNode data = new ObjectMapper().createObjectNode()
-                    .put("character_external_id", characterId);
-            return request("chat/history/continue/", "POST", data);
+        public JsonNode fetchChat(String chatId) throws IOException {
+            Request req = new Request.Builder()
+                    .url(NEO_URL + "chat/" + chatId + "/")
+                    .headers(buildNeoHeaders())
+                    .get()
+                    .build();
+
+            try (Response resp = client.newCall(req).execute()) {
+                String b = Objects.requireNonNull(resp.body()).string();
+                JsonNode json = mapper.readTree(b);
+                if (resp.code() == 200) {
+                    return json;
+                }
+                if (json.has("command") && "neo_error".equals(json.get("command").asText())) {
+                    throw new IOException("Cannot fetch chat. " + json.path("comment").asText());
+                }
+                throw new IOException("Cannot fetch chat. " + json);
+            }
         }
 
-        /*
-         * Gets the `tgt` variable, when provided with a character ID.
-         * Arguments:
-         *     characterId: String, the character's ID
-         */
-        public String getTgt(String characterId) throws IOException {
-            JsonNode chat = getChat(characterId);
-            return chat.get("participants").get(0).get("is_human").asBoolean() ?
-                   chat.get("participants").get(1).get("user").get("username").asText() :
-                   chat.get("participants").get(0).get("user").get("username").asText();
+        public JsonNode fetchRecentChats() throws IOException {
+            Request req = new Request.Builder()
+                    .url(NEO_URL + "chats/recent/")
+                    .headers(buildNeoHeaders())
+                    .get()
+                    .build();
+            try (Response resp = client.newCall(req).execute()) {
+                String b = Objects.requireNonNull(resp.body()).string();
+                JsonNode json = mapper.readTree(b);
+                if (resp.code() == 200) return json;
+                if (json.has("command") && "neo_error".equals(json.get("command").asText())) {
+                    throw new IOException("Cannot fetch recent chats. " + json.path("comment").asText());
+                }
+                throw new IOException("Cannot fetch recent chats. " + json);
+            }
         }
 
-        /*
-         * Send a message to a character.
-         * Arguments:
-         *     historyId: String, the history ID you want to send a message in
-         *     text: String, the text you want to send to a character
-         *     tgt: String,
-         */
-        public JsonNode sendMessage(String historyId, String text, String tgt) throws IOException {
-            JsonNode data = new ObjectMapper().createObjectNode()
-                    .put("history_external_id", historyId)
-                    .put("tgt", tgt)
-                    .put("text", text);
-            return request("chat/streaming/", "POST-SPLIT", data);
+        public MessagesPage fetchMessages(String chatId, boolean pinnedOnly, String nextToken) throws IOException {
+            String url = NEO_URL + "turns/" + chatId + "/";
+            if (nextToken != null && !nextToken.isEmpty()) {
+                url += "?next_token=" + URLEncoder.encode(nextToken, StandardCharsets.UTF_8);
+            }
+            Request req = new Request.Builder()
+                    .url(url)
+                    .headers(buildNeoHeaders())
+                    .get()
+                    .build();
+
+            try (Response resp = client.newCall(req).execute()) {
+                String b = Objects.requireNonNull(resp.body()).string();
+                JsonNode json = mapper.readTree(b);
+                if (resp.code() == 200) {
+                    List<JsonNode> turns = new ArrayList<>();
+                    JsonNode rawTurns = json.path("turns");
+                    if (rawTurns.isArray()) {
+                        for (JsonNode t : rawTurns) {
+                            boolean isPinned = t.path("is_pinned").asBoolean(false);
+                            if (!pinnedOnly || isPinned) turns.add(t);
+                        }
+                    }
+                    String newNext = json.path("meta").path("next_token").isMissingNode() ? null : json.path("meta").path("next_token").asText(null);
+                    return new MessagesPage(turns, newNext, json);
+                }
+                if (json.has("command") && "neo_error".equals(json.get("command").asText())) {
+                    throw new IOException("Cannot fetch messages. " + json.path("comment").asText());
+                }
+                throw new IOException("Cannot fetch messages. " + json);
+            }
         }
 
-        /*
-         * Send a message to a character.
-         * Arguments:
-         *     historyId: String, the history ID you want to send a message in
-         *     messageUuids: String[], the messages to delete
-         */
-        public JsonNode deleteMessages(String historyId, String[] messageUuids) throws IOException {
-            JsonNode data = new ObjectMapper().createObjectNode()
-                    .put("history_id", historyId)
-                    .putPOJO("uuids_to_delete", messageUuids);
-            return request("chat/history/msgs/delete", "POST", data);
+        public List<JsonNode> getHistory(String chatId, boolean pinnedOnly) throws IOException {
+            List<JsonNode> all = new ArrayList<>();
+            String next = null;
+            do {
+                MessagesPage page = fetchMessages(chatId, pinnedOnly, next);
+                if (page.turns == null || page.turns.isEmpty()) break;
+                all.addAll(page.turns);
+                next = page.nextToken;
+            } while (next != null && !next.isEmpty());
+            return all;
         }
 
-        /*
-         * Creates a new chat with a specified character.
-         * Arguments:
-         *     characterId: String, the character you want to start a new chat with
+        public boolean deleteMessages(String chatId, List<String> turnIds) throws IOException {
+            ObjectNode body = mapper.createObjectNode();
+            body.putPOJO("turn_ids", turnIds);
+            Request req = new Request.Builder()
+                    .url(NEO_URL + "turns/" + chatId + "/remove")
+                    .post(RequestBody.create(MediaType.parse("application/json; charset=utf-8"), body.toString()))
+                    .headers(buildNeoHeaders())
+                    .build();
+
+            try (Response resp = client.newCall(req).execute()) {
+                String b = Objects.requireNonNull(resp.body()).string();
+                JsonNode json = mapper.readTree(b);
+                if (resp.code() == 200) return true;
+                if (json.has("command") && "neo_error".equals(json.get("command").asText())) {
+                    throw new IOException("Cannot delete messages. " + json.path("comment").asText());
+                }
+                throw new IOException("Cannot delete messages. " + json);
+            }
+        }
+
+        public boolean updateChatName(String chatId, String name) throws IOException {
+            ObjectNode body = mapper.createObjectNode().put("name", name);
+            Request req = new Request.Builder()
+                    .url(NEO_URL + "chat/" + chatId + "/update_name")
+                    .patch(RequestBody.create(MediaType.parse("application/json; charset=utf-8"), body.toString()))
+                    .headers(buildNeoHeaders())
+                    .build();
+
+            try (Response resp = client.newCall(req).execute()) {
+                if (resp.code() == 200) return true;
+                String b = Objects.requireNonNull(resp.body()).string();
+                JsonNode json = mapper.readTree(b);
+                if (json.has("command") && "neo_error".equals(json.get("command").asText())) {
+                    throw new IOException("Cannot update chat name. " + json.path("comment").asText());
+                }
+                throw new IOException("Cannot update chat name. " + json);
+            }
+        }
+
+        public boolean archiveChat(String chatId) throws IOException {
+            Request req = new Request.Builder()
+                    .url(NEO_URL + "chat/" + chatId + "/archive")
+                    .patch(RequestBody.create(MediaType.parse("application/json; charset=utf-8"), "{}"))
+                    .headers(buildNeoHeaders())
+                    .build();
+
+            try (Response resp = client.newCall(req).execute()) {
+                if (resp.code() == 200) return true;
+                String b = Objects.requireNonNull(resp.body()).string();
+                JsonNode json = mapper.readTree(b);
+                if (json.has("command") && "neo_error".equals(json.get("command").asText())) {
+                    throw new IOException("Cannot archive chat. " + json.path("comment").asText());
+                }
+                throw new IOException("Cannot archive chat. " + json);
+            }
+        }
+
+        public boolean unarchiveChat(String chatId) throws IOException {
+            Request req = new Request.Builder()
+                    .url(NEO_URL + "chat/" + chatId + "/unarchive")
+                    .patch(RequestBody.create(MediaType.parse("application/json; charset=utf-8"), "{}"))
+                    .headers(buildNeoHeaders())
+                    .build();
+
+            try (Response resp = client.newCall(req).execute()) {
+                if (resp.code() == 200) return true;
+                String b = Objects.requireNonNull(resp.body()).string();
+                JsonNode json = mapper.readTree(b);
+                if (json.has("command") && "neo_error".equals(json.get("command").asText())) {
+                    throw new IOException("Cannot unarchive chat. " + json.path("comment").asText());
+                }
+                throw new IOException("Cannot unarchive chat. " + json);
+            }
+        }
+
+        public String copyChat(String chatId, String endTurnId) throws IOException {
+            ObjectNode body = mapper.createObjectNode().put("end_turn_id", endTurnId);
+            Request req = new Request.Builder()
+                    .url(NEO_URL + "chat/" + chatId + "/copy")
+                    .post(RequestBody.create(MediaType.parse("application/json; charset=utf-8"), body.toString()))
+                    .headers(buildNeoHeaders())
+                    .build();
+
+            try (Response resp = client.newCall(req).execute()) {
+                String b = Objects.requireNonNull(resp.body()).string();
+                JsonNode json = mapper.readTree(b);
+                if (resp.code() == 200) {
+                    return json.has("new_chat_id") ? json.get("new_chat_id").asText(null) : null;
+                }
+                if (json.has("command") && "neo_error".equals(json.get("command").asText())) {
+                    throw new IOException("Cannot copy chat. " + json.path("comment").asText());
+                }
+                throw new IOException("Cannot copy chat. " + json);
+            }
+        }
+
+        public interface StreamListener {
+            void onEvent(JsonNode event);
+            void onError(Throwable t);
+            void onClose();
+        }
+
+        // inefficient
+        private CompletableFuture<Void> wsSendAndReceive(ObjectNode message, StreamListener listener, long timeoutMillis) {
+            CompletableFuture<Void> done = new CompletableFuture<>();
+            Request wsReq = new Request.Builder()
+                    .url(NEO_WS_URL)
+                    .headers(buildNeoHeaders())
+                    .build();
+
+            WebSocketListener wl = new WebSocketListener() {
+                @Override
+                public void onOpen(WebSocket webSocket, Response response) {
+                    try {
+                        webSocket.send(message.toString());
+                    } catch (Exception e) {
+                        listener.onError(e);
+                        done.completeExceptionally(e);
+                        webSocket.close(1000, "error");
+                    }
+                }
+
+                @Override
+                public void onMessage(WebSocket webSocket, String text) {
+                    try {
+                        JsonNode node = mapper.readTree(text);
+                        listener.onEvent(node);
+                    } catch (Exception e) {
+                        listener.onError(e);
+                        done.completeExceptionally(e);
+                        webSocket.close(1000, "error");
+                    }
+                }
+
+                @Override
+                public void onMessage(WebSocket webSocket, ByteString bytes) {
+                    onMessage(webSocket, bytes.utf8());
+                }
+
+                @Override
+                public void onClosing(WebSocket webSocket, int code, String reason) {
+                    webSocket.close(1000, null);
+                }
+
+                @Override
+                public void onClosed(WebSocket webSocket, int code, String reason) {
+                    listener.onClose();
+                    done.complete(null);
+                }
+
+                @Override
+                public void onFailure(WebSocket webSocket, Throwable t, Response response) {
+                    listener.onError(t);
+                    done.completeExceptionally(t);
+                }
+            };
+
+            WebSocket ws = client.newWebSocket(wsReq, wl);
+
+            // Safety timeout
+            if (timeoutMillis > 0) {
+                ScheduledExecutorService ses = Executors.newSingleThreadScheduledExecutor();
+                ses.schedule(() -> {
+                    if (!done.isDone()) {
+                        done.completeExceptionally(new TimeoutException("WebSocket timed out"));
+                        try { ws.close(1000, "timeout"); } catch (Exception ignored) {}
+                    }
+                    ses.shutdown();
+                }, timeoutMillis, TimeUnit.MILLISECONDS);
+            }
+            return done;
+        }
+
+        /**
+         * Create a chat via websocket.
+         * Returns a CompletableFuture that completes with a Map: keys "chat" -> JsonNode (new chat),
+         * and "greeting_turn" -> JsonNode (if greeting true and greeting turn received).
+         *
+         * Provide a token override if needed (otherwise config token is used).
          */
-        public JsonNode newChat(String characterId) throws IOException {
-            JsonNode data = new ObjectMapper().createObjectNode()
-                    .put("character_external_id", characterId);
-            return request("chat/history/create/", "POST", data);
+        public CompletableFuture<Map<String, JsonNode>> newChat(String characterId, boolean greeting, String modelType) {
+            CompletableFuture<Map<String, JsonNode>> result = new CompletableFuture<>();
+
+            String requestId = UUID.randomUUID().toString();
+            String chatId = UUID.randomUUID().toString();
+
+            ObjectNode payload = mapper.createObjectNode();
+            ObjectNode chatNode = mapper.createObjectNode();
+            chatNode.put("chat_id", chatId);
+            chatNode.put("creator_id", accountId);
+            chatNode.put("visibility", "VISIBILITY_PRIVATE");
+            chatNode.put("character_id", characterId);
+            chatNode.put("type", "TYPE_ONE_ON_ONE");
+            if (modelType != null && !modelType.isBlank()) chatNode.put("preferred_model_type", modelType);
+
+            payload.set("chat", chatNode);
+            payload.put("with_greeting", greeting);
+
+            ObjectNode message = mapper.createObjectNode();
+            message.put("command", "create_chat");
+            message.put("request_id", requestId);
+            message.set("payload", payload);
+
+            final JsonNode[] newChat = new JsonNode[1];
+            final JsonNode[] greetingTurn = new JsonNode[1];
+
+            StreamListener l = new StreamListener() {
+                @Override
+                public void onEvent(JsonNode event) {
+                    String cmd = event.path("command").asText("");
+                    switch (cmd) {
+                        case "create_chat_response" -> {
+                            newChat[0] = event.path("chat");
+                            if (!greeting) {
+                                Map<String, JsonNode> out = new HashMap<>();
+                                out.put("chat", newChat[0]);
+                                out.put("greeting_turn", null);
+                                result.complete(out);
+                            }
+                            // otherwise wait for greeting
+                        }
+                        case "add_turn" -> {
+                            JsonNode turn = event.path("turn");
+                            greetingTurn[0] = turn;
+                            if (newChat[0] == null) {
+                                // still accept greeting if create_chat_response comes later
+                                // but if we want to require both, we'll wait
+                            }
+                            Map<String, JsonNode> out = new HashMap<>();
+                            out.put("chat", newChat[0]);
+                            out.put("greeting_turn", greetingTurn[0]);
+                            result.complete(out);
+                        }
+                        case "neo_error" ->
+                                result.completeExceptionally(new RuntimeException("Cannot create a new chat. " + event.path("comment").asText("")));
+                        case null, default -> {
+                        }
+                        // ignore other events
+                    }
+                }
+
+                @Override
+                public void onError(Throwable t) {
+                    result.completeExceptionally(t);
+                }
+
+                @Override
+                public void onClose() {
+                    if (!result.isDone()) {
+                        result.completeExceptionally(new RuntimeException("Session closed before chat creation finished"));
+                    }
+                }
+            };
+
+            // send via websocket and let listener complete the result
+            wsSendAndReceive(message, l, 120_000).exceptionally(ex -> {
+                if (!result.isDone()) result.completeExceptionally(ex);
+                return null;
+            });
+
+            return result;
+        }
+
+        /**
+         * Send a message via websocket. If streaming == true, the provided StreamListener will be invoked
+         * for each incremental event and the returned CompletableFuture completes when the stream ends.
+         *
+         * If streaming == false, a blocking CompletableFuture<JsonNode> is returned that completes with the final Turn node.
+         */
+        public CompletableFuture<JsonNode> sendMessage(String characterId, String chatId, String text, boolean streaming) {
+            CompletableFuture<JsonNode> finalResult = new CompletableFuture<>();
+
+            String candidateId = UUID.randomUUID().toString();
+            String turnId = UUID.randomUUID().toString();
+            String requestId = UUID.randomUUID().toString();
+
+            ObjectNode payload = mapper.createObjectNode();
+            payload.put("character_id", characterId);
+            payload.put("num_candidates", 1);
+
+            ObjectNode prevAnn = mapper.createObjectNode();
+            String[] annKeys = new String[]{
+                    "bad_memory","boring","ends_chat_early","funny","helpful","inaccurate","interesting","long",
+                    "not_bad_memory","not_boring","not_ends_chat_early","not_funny","not_helpful","not_inaccurate","not_interesting","not_long","not_out_of_character","not_repetitive","not_short",
+                    "out_of_character","repetitive","short"
+            };
+            for (String k : annKeys) prevAnn.put(k, 0);
+            payload.set("previous_annotations", prevAnn);
+            payload.put("selected_language", "");
+            payload.put("tts_enabled", false);
+
+            ObjectNode turn = mapper.createObjectNode();
+            ObjectNode author = mapper.createObjectNode();
+            author.put("author_id", accountId);
+            author.put("is_human", true);
+            author.put("name", "");
+            turn.set("author", author);
+
+            ObjectNode candidate = mapper.createObjectNode();
+            candidate.put("candidate_id", candidateId);
+            candidate.put("raw_content", text);
+
+            turn.putArray("candidates").add(candidate);
+            turn.put("primary_candidate_id", candidateId);
+
+            ObjectNode turnKey = mapper.createObjectNode();
+            ObjectNode tk = mapper.createObjectNode();
+            tk.put("chat_id", chatId);
+            tk.put("turn_id", turnId);
+            turn.set("turn_key", tk);
+
+            payload.set("turn", turn);
+            payload.put("user_name", "");
+
+            ObjectNode message = mapper.createObjectNode();
+            message.put("command", "create_and_generate_turn");
+            message.put("origin_id", "web-next");
+            message.set("payload", payload);
+            message.put("request_id", requestId);
+
+            if (streaming) {
+                // streaming path: user should use wsSendAndReceive directly with a StreamListener to receive events.
+                // Here, we provide a convenience CompletableFuture that completes when the final event arrives.
+                StreamListener l = new StreamListener() {
+                    @Override
+                    public void onEvent(JsonNode event) {
+                        String cmd = event.path("command").asText("");
+                        if ("neo_error".equals(cmd)) {
+                            finalResult.completeExceptionally(new RuntimeException("Cannot send message. " + event.path("comment").asText("")));
+                            return;
+                        }
+                        if ("add_turn".equals(cmd) || "update_turn".equals(cmd)) {
+                            JsonNode turnNode = event.path("turn");
+                            boolean authorIsHuman = turnNode.path("author").path("is_human").asBoolean(false);
+                            if (authorIsHuman) {
+                                // skip first human echo
+                                return;
+                            }
+                            // emit progress by overriding: here we set the final result when candidate is final
+                            JsonNode primaryCandidate = null;
+                            try {
+                                if (turnNode.has("candidates") && turnNode.get("candidates").isArray() && !turnNode.get("candidates").isEmpty()) {
+                                    primaryCandidate = turnNode.get("candidates").get(0);
+                                }
+                            } catch (Exception ignored) {}
+
+                            boolean isFinal = primaryCandidate != null && primaryCandidate.path("is_final").asBoolean(false);
+                            if (isFinal) {
+                                finalResult.complete(turnNode);
+                            } else {
+                                // intermediate; optionally could callback to user if they pass their own listener
+                            }
+                        } else if ("filter_user_input_self_harm".equals(cmd)) {
+                            finalResult.completeExceptionally(new RuntimeException("Cannot send message. Self harm message detected"));
+                        }
+                    }
+
+                    @Override
+                    public void onError(Throwable t) {
+                        finalResult.completeExceptionally(t);
+                    }
+
+                    @Override
+                    public void onClose() {
+                        if (!finalResult.isDone()) {
+                            finalResult.completeExceptionally(new RuntimeException("Stream closed without final result"));
+                        }
+                    }
+                };
+
+                wsSendAndReceive(message, l, 120_000).exceptionally(ex -> {
+                    if (!finalResult.isDone()) finalResult.completeExceptionally(ex);
+                    return null;
+                });
+
+            } else {
+                // non-streaming: collect events until final candidate, then complete
+                StreamListener l = new StreamListener() {
+                    @Override
+                    public void onEvent(JsonNode event) {
+                        String cmd = event.path("command").asText("");
+                        if ("neo_error".equals(cmd)) {
+                            finalResult.completeExceptionally(new RuntimeException("Cannot send message. " + event.path("comment").asText("")));
+                            return;
+                        }
+                        if ("add_turn".equals(cmd) || "update_turn".equals(cmd)) {
+                            JsonNode turnNode = event.path("turn");
+                            boolean authorIsHuman = turnNode.path("author").path("is_human").asBoolean(false);
+                            if (authorIsHuman) return;
+                            JsonNode primaryCandidate = null;
+                            if (turnNode.has("candidates") && turnNode.get("candidates").isArray() && !turnNode.get("candidates").isEmpty()) {
+                                primaryCandidate = turnNode.get("candidates").get(0);
+                            }
+                            if (primaryCandidate != null && primaryCandidate.path("is_final").asBoolean(false)) {
+                                finalResult.complete(turnNode);
+                            }
+                        } else if ("filter_user_input_self_harm".equals(cmd)) {
+                            finalResult.completeExceptionally(new RuntimeException("Cannot send message. Self harm message detected"));
+                        }
+                    }
+
+                    @Override
+                    public void onError(Throwable t) {
+                        finalResult.completeExceptionally(t);
+                    }
+
+                    @Override
+                    public void onClose() {
+                        if (!finalResult.isDone()) {
+                            finalResult.completeExceptionally(new RuntimeException("Stream closed without final result"));
+                        }
+                    }
+                };
+
+                wsSendAndReceive(message, l, 120_000).exceptionally(ex -> {
+                    if (!finalResult.isDone()) finalResult.completeExceptionally(ex);
+                    return null;
+                });
+            }
+
+            return finalResult;
+        }
+
+        public CompletableFuture<JsonNode> anotherResponse(String characterId, String chatId, String turnId) {
+            CompletableFuture<JsonNode> finalResult = new CompletableFuture<>();
+            String requestId = UUID.randomUUID().toString();
+
+            ObjectNode payload = mapper.createObjectNode();
+            payload.put("character_id", characterId);
+
+            ObjectNode prevAnn = mapper.createObjectNode();
+            String[] annKeys = new String[]{
+                    "bad_memory","boring","ends_chat_early","funny","helpful","inaccurate","interesting","long",
+                    "not_bad_memory","not_boring","not_ends_chat_early","not_funny","not_helpful","not_inaccurate","not_interesting","not_long","not_out_of_character","not_repetitive","not_short",
+                    "out_of_character","repetitive","short"
+            };
+            for (String k : annKeys) prevAnn.put(k, 0);
+            payload.set("previous_annotations", prevAnn);
+            payload.put("selected_language", "");
+            payload.put("tts_enabled", false);
+
+            ObjectNode tk = mapper.createObjectNode();
+            tk.put("chat_id", chatId);
+            tk.put("turn_id", turnId);
+            payload.set("turn_key", tk);
+            payload.put("user_name", "");
+
+            ObjectNode message = mapper.createObjectNode();
+            message.put("command", "generate_turn_candidate");
+            message.put("origin_id", "web-next");
+            message.set("payload", payload);
+            message.put("request_id", requestId);
+
+            StreamListener l = new StreamListener() {
+                @Override
+                public void onEvent(JsonNode event) {
+                    String cmd = event.path("command").asText("");
+                    if ("neo_error".equals(cmd)) {
+                        finalResult.completeExceptionally(new RuntimeException("Cannot generate another response. " + event.path("comment").asText("")));
+                        return;
+                    }
+                    if ("update_turn".equals(cmd)) {
+                        JsonNode turn = event.path("turn");
+                        JsonNode primaryCandidate = null;
+                        if (turn.has("candidates") && turn.get("candidates").isArray() && turn.get("candidates").size() > 0) {
+                            primaryCandidate = turn.get("candidates").get(0);
+                        }
+                        if (primaryCandidate != null && primaryCandidate.path("is_final").asBoolean(false)) {
+                            finalResult.complete(turn);
+                        }
+                    }
+                }
+
+                @Override
+                public void onError(Throwable t) {
+                    finalResult.completeExceptionally(t);
+                }
+
+                @Override
+                public void onClose() {
+                    if (!finalResult.isDone()) finalResult.completeExceptionally(new RuntimeException("Session closed"));
+                }
+            };
+
+            wsSendAndReceive(message, l, 120_000).exceptionally(ex -> {
+                if (!finalResult.isDone()) finalResult.completeExceptionally(ex);
+                return null;
+            });
+
+            return finalResult;
+        }
+
+        /**
+         * Edit a message's candidate via websocket.
+         * Returns CompletableFuture<JsonNode> with the updated turn.
+         */
+        public CompletableFuture<JsonNode> editMessage(String chatId, String turnId, String candidateId, String newText) {
+            CompletableFuture<JsonNode> finalResult = new CompletableFuture<>();
+            String requestId = UUID.randomUUID().toString();
+
+            ObjectNode payload = mapper.createObjectNode();
+            ObjectNode turnKey = mapper.createObjectNode();
+            turnKey.put("chat_id", chatId);
+            turnKey.put("turn_id", turnId);
+            payload.set("turn_key", turnKey);
+            payload.put("current_candidate_id", candidateId);
+            payload.put("new_candidate_raw_content", newText);
+
+            ObjectNode message = mapper.createObjectNode();
+            message.put("command", "edit_turn_candidate");
+            message.put("request_id", requestId);
+            message.set("payload", payload);
+            message.put("origin_id", "web-next");
+
+            StreamListener l = new StreamListener() {
+                @Override
+                public void onEvent(JsonNode event) {
+                    String cmd = event.path("command").asText("");
+                    if ("neo_error".equals(cmd)) {
+                        finalResult.completeExceptionally(new RuntimeException("Cannot edit message. " + event.path("comment").asText("")));
+                        return;
+                    }
+                    if ("update_turn".equals(cmd)) {
+                        finalResult.complete(event.path("turn"));
+                    }
+                }
+
+                @Override
+                public void onError(Throwable t) {
+                    finalResult.completeExceptionally(t);
+                }
+
+                @Override
+                public void onClose() {
+                    if (!finalResult.isDone()) finalResult.completeExceptionally(new RuntimeException("Session closed"));
+                }
+            };
+
+            wsSendAndReceive(message, l, 60_000).exceptionally(ex -> {
+                if (!finalResult.isDone()) finalResult.completeExceptionally(ex);
+                return null;
+            });
+
+            return finalResult;
+        }
+
+        /**
+         * Delete messages (REST wrapper).
+         */
+        public boolean deleteMessage(String chatId, String turnId) throws IOException {
+            return deleteMessages(chatId, Collections.singletonList(turnId));
+        }
+
+        /**
+         * Pin a message via websocket.
+         */
+        public CompletableFuture<Boolean> pinMessage(String chatId, String turnId) {
+            CompletableFuture<Boolean> result = new CompletableFuture<>();
+            String reqId = UUID.randomUUID().toString();
+
+            ObjectNode payload = mapper.createObjectNode();
+            ObjectNode turnKey = mapper.createObjectNode();
+            turnKey.put("chat_id", chatId);
+            turnKey.put("turn_id", turnId);
+            payload.put("is_pinned", true);
+            payload.set("turn_key", turnKey);
+
+            ObjectNode message = mapper.createObjectNode();
+            message.put("command", "set_turn_pin");
+            message.put("origin_id", "web-next");
+            message.set("payload", payload);
+            message.put("request_id", reqId);
+
+            StreamListener l = new StreamListener() {
+                @Override
+                public void onEvent(JsonNode event) {
+                    String cmd = event.path("command").asText("");
+                    if ("neo_error".equals(cmd)) {
+                        result.completeExceptionally(new RuntimeException("Cannot pin message. " + event.path("comment").asText("")));
+                        return;
+                    }
+                    if ("update_turn".equals(cmd)) {
+                        boolean isPinned = event.path("turn").path("is_pinned").asBoolean(false);
+                        result.complete(isPinned);
+                    }
+                }
+
+                @Override
+                public void onError(Throwable t) {
+                    result.completeExceptionally(t);
+                }
+
+                @Override
+                public void onClose() {
+                    if (!result.isDone()) result.completeExceptionally(new RuntimeException("Session closed"));
+                }
+            };
+
+            wsSendAndReceive(message, l, 30_000).exceptionally(ex -> {
+                if (!result.isDone()) result.completeExceptionally(ex);
+                return null;
+            });
+
+            return result;
+        }
+
+        /**
+         * Unpin a message via websocket.
+         */
+        public CompletableFuture<Boolean> unpinMessage(String chatId, String turnId) {
+            CompletableFuture<Boolean> result = new CompletableFuture<>();
+            String reqId = UUID.randomUUID().toString();
+
+            ObjectNode payload = mapper.createObjectNode();
+            ObjectNode turnKey = mapper.createObjectNode();
+            turnKey.put("chat_id", chatId);
+            turnKey.put("turn_id", turnId);
+            payload.put("is_pinned", false);
+            payload.set("turn_key", turnKey);
+
+            ObjectNode message = mapper.createObjectNode();
+            message.put("command", "set_turn_pin");
+            message.put("origin_id", "web-next");
+            message.set("payload", payload);
+            message.put("request_id", reqId);
+
+            StreamListener l = new StreamListener() {
+                @Override
+                public void onEvent(JsonNode event) {
+                    String cmd = event.path("command").asText("");
+                    if ("neo_error".equals(cmd)) {
+                        result.completeExceptionally(new RuntimeException("Cannot unpin message. " + event.path("comment").asText("")));
+                        return;
+                    }
+                    if ("update_turn".equals(cmd)) {
+                        boolean isPinned = event.path("turn").path("is_pinned").asBoolean(true);
+                        result.complete(!isPinned);
+                    }
+                }
+
+                @Override
+                public void onError(Throwable t) {
+                    result.completeExceptionally(t);
+                }
+
+                @Override
+                public void onClose() {
+                    if (!result.isDone()) result.completeExceptionally(new RuntimeException("Session closed"));
+                }
+            };
+
+            wsSendAndReceive(message, l, 30_000).exceptionally(ex -> {
+                if (!result.isDone()) result.completeExceptionally(ex);
+                return null;
+            });
+
+            return result;
+        }
+
+        /**
+         * Update primary candidate (websocket).
+         */
+        public CompletableFuture<Boolean> updatePrimaryCandidate(String chatId, String turnId, String candidateId) {
+            CompletableFuture<Boolean> result = new CompletableFuture<>();
+            ObjectNode payload = mapper.createObjectNode();
+            payload.put("candidate_id", candidateId);
+
+            ObjectNode turnKey = mapper.createObjectNode();
+            turnKey.put("chat_id", chatId);
+            turnKey.put("turn_id", turnId);
+            payload.set("turn_key", turnKey);
+
+            ObjectNode wsMessage = mapper.createObjectNode();
+            wsMessage.put("command", "update_primary_candidate");
+            wsMessage.put("origin_id", "web-next");
+            wsMessage.set("payload", payload);
+
+            StreamListener l = new StreamListener() {
+                @Override
+                public void onEvent(JsonNode event) {
+                    String cmd = event.path("command").asText("");
+                    if ("neo_error".equals(cmd)) {
+                        result.completeExceptionally(new RuntimeException("Cannot update primary candidate. " + event.path("comment").asText("")));
+                        return;
+                    }
+                    if ("ok".equals(cmd)) {
+                        result.complete(true);
+                    }
+                }
+
+                @Override
+                public void onError(Throwable t) {
+                    result.completeExceptionally(t);
+                }
+
+                @Override
+                public void onClose() {
+                    if (!result.isDone()) result.complete(false);
+                }
+            };
+
+            wsSendAndReceive(wsMessage, l, 30_000).exceptionally(ex -> {
+                if (!result.isDone()) result.completeExceptionally(ex);
+                return null;
+            });
+
+            return result;
         }
     }
 
     public JsonNode ping() throws IOException {
         return request("ping/", "GET", null);
     }
+
+    public record MessagesPage(List<JsonNode> turns, String nextToken, JsonNode raw) { }
 }

@@ -31,6 +31,7 @@ public class MCAIConfig implements ConfigData {
 
     public static class General implements ConfigData {
         @Comment("Authorization key for Character AI. Required for the mod to function.")
+        @ConfigEntry.Gui.RequiresRestart
         public String authorization = "";
         @Comment("This field dictates how messages sent to the AI will be formatted.")
         public String format = "{user}:{message}";

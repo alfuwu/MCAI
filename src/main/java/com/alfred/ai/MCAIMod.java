@@ -21,6 +21,8 @@ import java.text.DecimalFormat;
 import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 public class MCAIMod implements ModInitializer {
 	public static final String MOD_ID = "mcai";
@@ -140,27 +142,27 @@ public class MCAIMod implements ModInitializer {
 	public static void sendAIMessage(String text, MCAIConfig.CharacterTuple tuple, String name, String format, String replyFormat, MinecraftServer server) {
 		Thread thread = new Thread(null, () -> {
 			try {
-				JsonNode chat = (tuple.historyId == null || tuple.historyId.strip().equals("")) ? CHARACTER_AI.chat.newChat(tuple.id) : CHARACTER_AI.chat.getChat(tuple.id);
-				String historyId = chat.get("external_id").asText();
-				if (!tuple.historyId.equals(historyId)) {
-					tuple.historyId = historyId;
+				if (tuple.historyId == null || tuple.historyId.isBlank()) {
+					Map<String, JsonNode> newChat = CHARACTER_AI.chat.newChat(tuple.id, true, null).get();
+					tuple.historyId = newChat.get("chat").get("chat_id").asText();
 					MCAIConfig.save();
 				}
-				String tgt = CHARACTER_AI.chat.getTgt(tuple.id);
-				JsonNode reply = CHARACTER_AI.chat.sendMessage(historyId,
+				JsonNode reply = CHARACTER_AI.chat.sendMessage(tuple.id,
+						tuple.historyId,
 						format
 								.replace("{user}", name)
 								.replace("{message}", text),
-						tgt);
+						false).get();
 				setLastCommunicatedWith(tuple);
 				String replyText = replyFormat
-						.replace("{char}", reply.get("src_char").get("participant").get("name").asText())
-						.replace("{message}", reply.get("replies").get(0).get("text").asText())
+						.replace("{char}", tuple.name)
+						.replace("{message}", reply.get("candidates").get(0).get("raw_content").asText())
 						.replace("\n\n", "\n");
-				LOGGER.info(replyText);
 				sendGlobalMessage(replyText, server);
-			} catch (IOException ignored) { }
-		}, "HTTP thread");
+			} catch (ExecutionException | InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }, "HTTP thread");
 		thread.start();
 	}
 }
