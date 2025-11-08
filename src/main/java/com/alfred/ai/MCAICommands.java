@@ -248,7 +248,6 @@ public class MCAICommands {
     private static int authorize(ServerCommandSource source, String token) {
         CONFIG.general.authorization = token;
         MCAIConfig.save();
-        CHARACTER_AI = new JavaCAI(token);
         source.sendFeedback(() -> Text.translatable("mcai.messages.authorized", token), true);
         return 1;
     }

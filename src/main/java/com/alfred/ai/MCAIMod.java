@@ -7,6 +7,7 @@ import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.message.v1.ServerMessageEvents;
+import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -34,8 +35,11 @@ public class MCAIMod implements ModInitializer {
 		// Register the CONFIG
 		CONFIG = AutoConfig.register(MCAIConfig.class, GsonConfigSerializer::new).getConfig();
 		// Create a C.AI instance
-		CHARACTER_AI = new JavaCAI(CONFIG.general.authorization);
+		CHARACTER_AI = new JavaCAI();
 		Random random = new Random();
+
+		PayloadTypeRegistry.playS2C().register(EchoPayload.ID, EchoPayload.CODEC);
+		PayloadTypeRegistry.playC2S().register(EchoPayload.ID, EchoPayload.CODEC);
 
 		ServerPlayNetworking.registerGlobalReceiver(EchoPayload.ID, (server, ctx) -> {
 			ServerPlayNetworking.send(ctx.player(), new EchoPayload()); // echo

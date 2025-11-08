@@ -9,15 +9,13 @@ import java.util.Objects;
 
 public class JavaCAI {
     private static final String BASE_URL = "https://character.ai/";
-    private final String token;
     private final OkHttpClient client;
     public final User user;
     public final Post post;
     public final Character character;
     public final Chat chat;
 
-    public JavaCAI(String token) {
-        this.token = token;
+    public JavaCAI() {
         this.client = new OkHttpClient();
         this.user = new User();
         this.post = new Post();
@@ -45,7 +43,7 @@ public class JavaCAI {
         }
 
         Request request = requestBuilder
-                .addHeader("Authorization", "Token " + token)
+                .addHeader("Authorization", "Token " + MCAIMod.CONFIG.general.authorization)
                 .build();
 
         try (Response response = client.newCall(request).execute()) {

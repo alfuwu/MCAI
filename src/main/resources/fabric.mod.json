@@ -5,7 +5,7 @@
 	"name": "Minecraft AI",
 	"description": "This mod is an interface with https://c.ai, allowing you to interact with AI inside of the game!",
 	"authors": [
-		"Alfred uwu"
+		"Alfred"
 	],
 	"contact": {
 		"homepage": "https://discord.gg/E8HxEhKqCg"
@@ -27,7 +27,7 @@
 	],
 	"depends": {
 		"fabricloader": ">=0.15.0",
-		"minecraft": "~1.20.4",
+		"minecraft": "~1.21.1",
 		"java": ">=17",
 		"fabric-api": "*",
 		"cloth-config": "*"
